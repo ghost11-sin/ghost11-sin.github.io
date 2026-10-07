@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>부자 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0B0B0F;
+    --card:#17171D;
+    --card2:#1E1E26;
+    --border:#2A2A33;
+    --text:#F4F3F6;
+    --sub:#8C8C9A;
+    --accent:#8B5CF6;
+    --accent-soft:rgba(139,92,246,0.14);
+    --good:#34D399;
+    --warn:#FBBF24;
+    --bad:#F87171;
+    --font-heading:'Pretendard', -apple-system, sans-serif;
+    --font-number:'Pretendard', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;min-width:0;}
+  html,body{overflow-x:hidden;}
+  body{
+    margin:0;
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    max-width:100vw;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:28px 20px 60px;}
+  header{
+    display:flex;align-items:center;gap:12px;
+    padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid var(--border);
+  }
+  header::before{
+    content:'₩';flex-shrink:0;
+    width:40px;height:40px;border-radius:12px;
+    background:linear-gradient(135deg,#8B5CF6,#6D28D9);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:18px;color:#fff;
+    font-family:var(--font-number);
+  }
+  header h1{font-family:var(--font-heading);font-weight:800;font-size:19px;margin:0;letter-spacing:-0.01em;}
+  header p{margin:2px 0 0;color:var(--sub);font-size:12.5px;}
+
+  /* 메인 탭 */
+  .main-tabs{display:none;} /* 탭이 하나뿐이라 숨김 (추후 다중 탭 복원 대비 유지) */
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* 서브 탭 */
+  .sub-tabs{display:flex;gap:8px;margin-bottom:16px;}
+  .sub-tab{
+    padding:8px 16px;font-size:13px;font-weight:700;border-radius:20px;border:1px solid var(--border);
+    background:var(--card);cursor:pointer;color:var(--sub);
+  }
+  .sub-tab.active{background:var(--accent-soft);color:#C4B5FD;border-color:var(--accent);}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:760px){.grid{grid-template-columns:1fr;}}
+  @media (min-width:1100px){.grid{gap:20px;}}
+
+  .card{
+    background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px;
+    box-shadow:0 1px 0 rgba(255,255,255,0.02) inset, 0 8px 24px rgba(0,0,0,0.25);
+  }
+  .card + .card{margin-top:14px;}
+
+  label{display:block;font-size:12.5px;color:var(--sub);margin:14px 0 6px;font-weight:500;}
+  label:first-of-type{margin-top:0;}
+  .input-row{position:relative;}
+  input[type=number], select{
+    width:100%;padding:11px 46px 11px 14px;border:1px solid var(--border);border-radius:12px;
+    font-size:15px;color:var(--text);background:var(--card2);
+    transition:border-color .15s;
+  }
+  input[type=number]:focus, select:focus{outline:none;border-color:var(--accent);}
+  select{padding:11px 14px;}
+  .unit{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--sub);font-size:13px;}
+
+  .preset-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .preset-btn{
+    padding:6px 12px;font-size:12px;border-radius:20px;border:1px solid var(--border);
+    background:var(--card2);cursor:pointer;color:var(--sub);
+  }
+  .preset-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+  .btn-primary{
+    width:100%;padding:14px;margin-top:18px;
+    background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff;border:none;
+    border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;
+    box-shadow:0 4px 16px rgba(139,92,246,0.35);
+  }
+  .btn-primary:hover{opacity:.92;}
+
+  .result-title{font-family:var(--font-heading);font-size:15.5px;font-weight:700;margin:0 0 2px;}
+  .result-sub{font-size:12px;color:var(--sub);margin:0 0 16px;}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .stat-label{font-size:11.5px;color:var(--sub);margin-bottom:4px;}
+  .stat-value{font-family:var(--font-number);font-size:18px;font-weight:700;}
+  .stat-value.hero{font-size:23px;color:#C4B5FD;font-weight:800;}
+
+  .progress{height:8px;border-radius:4px;background:var(--card2);overflow:hidden;display:flex;margin:6px 0;}
+  .progress > div{height:100%;}
+  .progress-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);}
+
+  .msg{
+    padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.5;margin-top:14px;
+  }
+  .msg.info{background:var(--card2);color:var(--sub);}
+  .msg.warn{background:rgba(251,191,36,0.12);color:var(--warn);}
+  .msg.bad{background:rgba(248,113,113,0.12);color:var(--bad);}
+  .msg.good{background:rgba(52,211,153,0.12);color:var(--good);}
+
+  canvas{max-width:100%;}
+
+  .placeholder{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:60px 20px;color:var(--sub);text-align:center;border:1px dashed var(--border);border-radius:16px;background:var(--card);
+  }
+  .placeholder h3{margin:8px 0 4px;color:var(--text);}
+
+  .save-indicator{font-size:12px;color:var(--good);margin-top:10px;opacity:0;transition:opacity .3s;}
+  .save-indicator.show{opacity:1;}
+
+  .accordion-toggle{
+    width:100%;margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:12px;
+    background:var(--card2);color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .accordion-content{
+    margin-top:10px;padding:16px;border-radius:12px;background:var(--card2);font-size:13px;line-height:1.7;color:var(--text);
+  }
+  .accordion-content .step{margin-bottom:12px;}
+  .accordion-content .step:last-child{margin-bottom:0;}
+  .accordion-content .step-title{font-weight:700;margin-bottom:2px;}
+  .accordion-content .step-formula{
+    display:inline-block;margin-top:4px;padding:6px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border);font-weight:600;
+  }
+
+  .liab-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  .add-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+  .add-row input[type=text]{
+    flex:1 1 160px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;
+    background:var(--card2);color:var(--text);
+  }
+  .add-row input[type=number]{
+    flex:0 1 110px;width:110px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;
+    background:var(--card2);color:var(--text);
+  }
+  .unit-inline{color:var(--sub);font-size:13px;}
+  .add-btn{
+    padding:10px 14px;border:none;border-radius:10px;background:var(--accent);color:#fff;
+    font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;
+  }
+  .add-btn:hover{opacity:.9;}
+
+  .item-list{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .item-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card2);
+  }
+  .item-row .item-color{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
+  .item-row .item-name{flex:1;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;}
+  .item-row .item-amount{font-family:var(--font-number);font-size:13px;font-weight:600;color:var(--text);}
+  .item-row .item-remove{
+    border:none;background:none;color:var(--sub);cursor:pointer;font-size:15px;padding:0 2px;line-height:1;
+  }
+  .item-row .item-remove:hover{color:var(--bad);}
+  .item-empty{font-size:12px;color:var(--sub);padding:8px 2px;}
+
+  .chart-wrap{position:relative;height:220px;margin-top:16px;}
+  .chart-wrap canvas{width:100% !important;height:100% !important;}
+
+  .header-actions{display:flex;gap:8px;margin-bottom:16px;}
+  .header-btn{
+    padding:8px 12px;font-size:13px;font-weight:700;border-radius:10px;border:1px solid var(--border);
+    background:var(--card2);color:var(--sub);cursor:pointer;
+  }
+  .header-btn:hover{border-color:var(--accent);color:#C4B5FD;}
+
+  .snapshot-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .snapshot-btn{
+    padding:8px 14px;font-size:13px;font-weight:700;border-radius:10px;border:1px solid var(--accent);
+    background:var(--accent-soft);color:#C4B5FD;cursor:pointer;
+  }
+  .snapshot-controls{display:flex;gap:8px;align-items:center;flex:0 0 auto;}
+  .month-input{
+    padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text);background:var(--card2);
+    color-scheme:dark;
+  }
+
+  .view-toggle{
+    margin-top:10px;border:none;background:none;color:var(--accent);font-size:12px;font-weight:600;
+    cursor:pointer;padding:0;
+  }
+  .view-toggle:hover{text-decoration:underline;}
+
+  @media (max-width:480px){
+    .wrap{padding:16px 10px 40px;}
+    header h1{font-size:18px;}
+    .main-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .main-tab{padding:8px 10px;font-size:13px;white-space:nowrap;}
+    .sub-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .sub-tab{white-space:nowrap;}
+    .stat-value{font-size:16px;}
+    .stat-value.hero{font-size:19px;}
+    .card{padding:16px;}
+    .add-row{flex-direction:column;align-items:stretch;}
+    .add-row input[type=text], .add-row input[type=number]{width:100%;flex:none;}
+    .add-btn{width:100%;}
+    .header-actions{flex-direction:column;}
+    .header-btn{width:100%;}
+  }
+
+  /* ── 월급 배분기 전용 (카테고리 구조) ── */
+  .sal-ratio-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;gap:2px;margin:14px 0 12px;background:var(--card2);}
+  .sal-ratio-seg{height:100%;border-radius:3px;transition:flex 0.35s cubic-bezier(.4,0,.2,1);min-width:0;}
+  .sal-ratio-legend{display:flex;flex-direction:column;gap:6px;}
+  .sal-leg-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border);}
+  .sal-leg-left{display:flex;align-items:center;gap:8px;}
+  .sal-leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .sal-leg-name{font-size:13px;color:var(--text);}
+  .sal-leg-pct{font-size:11px;color:var(--sub);margin-left:2px;}
+  .sal-leg-amt{font-family:var(--font-number);font-size:13px;font-weight:600;color:var(--text);}
+
+  .sal-reserve-card{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:linear-gradient(145deg,#1C1626,#14101D);
+    border:1px solid rgba(139,92,246,0.25);
+    position:relative;overflow:hidden;
+  }
+  .sal-reserve-card::after{
+    content:'';position:absolute;top:-40%;right:-10%;width:220px;height:220px;border-radius:50%;
+    background:radial-gradient(circle,rgba(139,92,246,0.22),transparent 70%);pointer-events:none;
+  }
+  .sal-reserve-hint{font-size:12px;color:var(--sub);position:relative;}
+  .sal-reserve-amt{font-family:var(--font-number);font-size:30px;font-weight:800;color:#C4B5FD;letter-spacing:-0.01em;position:relative;}
+  .sal-reserve-amt.over{color:var(--bad);}
+  .sal-reserve-amt.zero{color:var(--sub);}
+  .sal-reserve-amt.pos{color:#C4B5FD;}
+
+  /* 카테고리 항목 */
+  .cat-item{border-bottom:1px solid var(--border);}
+  .cat-item:first-child{border-top:1px solid var(--border);}
+  .cat-header{display:flex;align-items:center;gap:10px;padding:12px 2px;cursor:pointer;user-select:none;}
+  .cat-header:hover .cat-del{opacity:1;}
+  .cat-chevron{font-size:10px;color:var(--sub);flex-shrink:0;transition:transform 0.2s;line-height:1;}
+  .cat-chevron.open{transform:rotate(90deg);}
+  .cat-color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .cat-name-inp{
+    flex:1;background:none;border:none;outline:none;
+    font-family:var(--font-heading);font-size:15px;font-weight:700;
+    color:var(--text);cursor:text;min-width:0;
+  }
+  .cat-name-inp::placeholder{color:#55555f;}
+  .cat-total{font-family:var(--font-number);font-size:14px;font-weight:700;color:#C4B5FD;flex-shrink:0;}
+  .cat-pct{font-size:11px;color:var(--sub);flex-shrink:0;min-width:32px;text-align:right;}
+  .cat-add-item-btn{
+    background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);
+    font-size:13px;width:22px;height:22px;line-height:1;cursor:pointer;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;transition:all 0.15s;
+  }
+  .cat-add-item-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .cat-del{background:none;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;transition:color 0.15s;opacity:0;}
+  .cat-del:hover{color:var(--bad);}
+
+  .sub-items{display:none;padding:2px 0 10px;}
+  .sub-items.open{display:block;}
+  .sub-item{display:flex;align-items:center;gap:8px;padding:7px 4px 7px 26px;border-top:1px dashed var(--border);}
+  .sub-name-inp{
+    flex:1;background:none;border:none;outline:none;
+    font-family:'Pretendard',sans-serif;font-size:13px;color:var(--text);min-width:0;
+  }
+  .sub-name-inp::placeholder{color:#55555f;}
+  .sub-divider{width:1px;height:14px;background:var(--border);flex-shrink:0;}
+  .sub-amt-inp{
+    width:100px;flex-shrink:0;background:none;border:none;outline:none;
+    font-family:var(--font-number);font-size:13px;font-weight:600;color:var(--text);
+    text-align:right;padding:2px 4px;
+  }
+  .sub-amt-inp::placeholder{color:#55555f;}
+  .sub-unit-lbl{font-size:12px;color:var(--sub);flex-shrink:0;}
+  .sub-del{background:none;border:none;color:transparent;font-size:14px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color 0.15s;}
+  .sub-item:hover .sub-del{color:#55555f;}
+  .sub-del:hover{color:var(--bad)!important;}
+
+  .sub-add-row{display:none;align-items:center;gap:8px;padding:8px 8px 8px 26px;margin-top:4px;background:var(--card2);border-radius:10px;border:1px solid var(--border);}
+  .sub-add-row.open{display:flex;}
+  .sub-add-name{flex:1;background:none;border:none;outline:none;font-family:'Pretendard',sans-serif;font-size:12px;color:var(--text);min-width:0;}
+  .sub-add-name::placeholder{color:#55555f;}
+  .sub-add-amt{width:90px;flex-shrink:0;background:none;border:none;border-bottom:1px solid var(--border);outline:none;font-family:var(--font-number);font-size:12px;color:var(--text);text-align:right;padding:2px 4px;}
+  .sub-add-amt::placeholder{color:#55555f;}
+  .sub-add-unit{font-size:11px;color:var(--sub);flex-shrink:0;}
+  .sub-add-btn{
+    font-size:11px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:8px;
+    padding:5px 10px;cursor:pointer;flex-shrink:0;transition:opacity 0.15s;
+  }
+  .sub-add-btn:hover{opacity:0.85;}
+
+  /* 모바일: 하위 항목/추가행 - 이름과 금액을 세로로 배치해 카드 밖으로 안 나가도록 */
+  @media (max-width:600px){
+    .card{padding:14px;}
+    .sub-item{flex-wrap:wrap;row-gap:6px;padding:9px 4px 9px 16px;width:100%;}
+    .sub-name-inp{flex:1 1 100% !important;order:1;width:100% !important;}
+    .sub-divider{display:none;}
+    .sub-amt-inp{flex:0 1 auto !important;order:2;width:80px !important;max-width:80px;text-align:left;border-bottom:1px solid var(--border);}
+    .sub-unit-lbl{order:3;}
+    .sub-del{order:4;margin-left:auto;color:#55555f;}
+
+    .sub-add-row{flex-wrap:wrap;row-gap:8px;padding:10px;width:100%;}
+    .sub-add-name{flex:1 1 100% !important;order:1;width:100% !important;}
+    .sub-add-row .sub-divider{display:none;}
+    .sub-add-amt{flex:0 1 auto !important;order:2;width:80px !important;max-width:80px;}
+    .sub-add-unit{order:3;}
+    .sub-add-btn{order:4;margin-left:auto;}
+
+    .cat-header{flex-wrap:wrap;}
+    .cat-name-inp{flex:1 1 100px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>월급 배분기</h1>
+    <p>이번 달 들어온 돈을 용도별로 배분하고 관리하세요.</p>
+  </header>
+
+  <!-- ================= 1. 월급 배분기 ================= -->
+  <section class="panel active" id="panel-salary">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;">
+      <p class="result-sub" style="margin:0;">이번 달 들어온 돈을 용도별로 배분하세요.</p>
+      <button class="header-btn" onclick="openCatManager()" style="flex-shrink:0;">⚙ 카테고리 관리</button>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div>
+        <div class="card">
+          <label>이번 달 실수령액</label>
+          <div class="input-row"><input type="number" id="sal-income" value="0" step="0.01"><span class="unit">만원</span></div>
+          <div class="save-indicator" id="sal-save-indicator">✓ 자동 저장됨</div>
+        </div>
+
+        <div class="card">
+          <p class="result-title" style="margin-bottom:2px;">배분 내역</p>
+          <p class="result-sub">카테고리를 펼쳐 항목과 금액을 추가하세요.</p>
+          <div id="sal-cat-list"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div>
+        <div class="card">
+          <p class="result-title">배분 비율</p>
+          <div class="sal-ratio-bar" id="sal-ratio-bar"></div>
+          <div class="sal-ratio-legend" id="sal-ratio-legend"></div>
+        </div>
+
+        <div class="card sal-reserve-card">
+          <div>
+            <div class="stat-label" style="margin-bottom:2px;">비상금</div>
+            <div class="sal-reserve-hint" id="sal-reserve-hint">—</div>
+          </div>
+          <div class="sal-reserve-amt" id="sal-reserve-amt">—</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <p class="result-title" style="margin:0;">비상금 누적 현황</p>
+              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(52,211,153,0.14);color:var(--good);">자동 추적</span>
+            </div>
+            <button class="header-btn" onclick="openReserveLogModal()" style="font-size:12px;padding:6px 10px;">기록 관리</button>
+          </div>
+          <p class="result-sub">이번 달 비상금을 실제로 모았다면 아래에서 누적액에 더해보세요.</p>
+          <div class="stat-grid">
+            <div><div class="stat-label">누적 비상금</div><div class="stat-value hero" id="reserve-cum-total">—</div></div>
+            <div><div class="stat-label">이번 달 계산된 비상금</div><div class="stat-value" id="reserve-this-month">—</div></div>
+          </div>
+          <button class="add-btn" style="width:100%;margin-top:10px;justify-content:center;" onclick="addThisMonthToReserve()">+ 이번 달 비상금을 누적액에 더하기</button>
+          <div id="reserve-add-msg"></div>
+        </div>
+
+        <div class="card">
+          <p class="result-title" style="margin-bottom:2px;">요약</p>
+          <div class="stat-grid">
+            <div><div class="stat-label">배분 합계</div><div class="stat-value" id="sal-total-amt">—</div></div>
+            <div><div class="stat-label">배분 비율</div><div class="stat-value" id="sal-total-pct">—</div></div>
+            <div><div class="stat-label">카테고리 수</div><div class="stat-value" id="sal-cat-count">—</div></div>
+            <div><div class="stat-label">연간 환산</div><div class="stat-value" id="sal-annual">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 비상금 누적 기록 관리 모달 -->
+  <div id="reserve-log-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:460px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(43,38,32,0.15);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <p class="result-title" style="margin:0;">비상금 누적 기록</p>
+        <button onclick="closeReserveLogModal()" style="background:none;border:none;color:var(--sub);font-size:20px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <p class="result-sub" style="margin-bottom:14px;">직접 금액을 더하거나 뺄 수 있어요. 각 기록은 삭제할 수 있어요.</p>
+      <div class="add-row">
+        <input type="text" id="reserve-log-name-input" placeholder="메모 (예: 3월 비상금, 병원비 사용)">
+        <select id="reserve-log-type-input" style="flex:0 0 70px;padding:10px 8px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--card2);color:var(--text);">
+          <option value="add">입금</option>
+          <option value="sub">출금</option>
+        </select>
+        <input type="number" id="reserve-log-amount-input" placeholder="금액" step="0.01">
+        <span class="unit-inline">만원</span>
+        <button class="add-btn" onclick="addReserveLog()">+ 추가</button>
+      </div>
+      <div class="item-list" id="reserve-log-list" style="margin-top:12px;"></div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div><div class="stat-label">누적 비상금</div><div class="stat-value hero" id="reserve-log-total">—</div></div>
+        <button class="btn-primary" style="width:auto;margin-top:0;padding:10px 26px;" onclick="closeReserveLogModal()">완료</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 카테고리 관리 모달 -->
+  <div id="cat-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:460px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(43,38,32,0.15);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <p class="result-title" style="margin:0;">카테고리 관리</p>
+        <button onclick="closeCatManager()" style="background:none;border:none;color:var(--sub);font-size:20px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <p class="result-sub" style="margin-bottom:14px;">이름 수정 · ↑↓ 순서 변경 · × 삭제</p>
+      <div id="cat-manager-list"></div>
+      <div class="add-row" style="margin-top:14px;">
+        <input type="text" id="cat-manager-new-name" placeholder="새 카테고리 이름">
+        <button class="add-btn" onclick="addCatFromManager()">+ 추가</button>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+        <button class="btn-primary" style="width:auto;margin-top:0;padding:10px 26px;" onclick="closeCatManager()">완료</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---------- 공통 유틸 ---------- */
+function formatManwon(manwon){
+  const totalWon = Math.round(manwon*10000); // 100원 단위까지 정확히 표시
+  const sign = totalWon < 0 ? "-" : "";
+  const absWon = Math.abs(totalWon);
+  const eok = Math.floor(absWon/100000000);
+  const afterEok = absWon % 100000000;
+  const man = Math.floor(afterEok/10000);
+  const won = afterEok % 10000;
+
+  const parts = [];
+  if(eok > 0) parts.push(`${eok}억`);
+  if(man > 0) parts.push(`${man.toLocaleString()}만`);
+  if(won > 0) parts.push(`${won.toLocaleString()}원`);
+
+  if(parts.length === 0) return `${sign}0원`;
+  let result = parts.join(' ');
+  if(!parts[parts.length-1].endsWith('원')) result += '원';
+  return sign + result;
+}
+
+// 고유 ID 생성 (카테고리, 하위 항목, 비상금 기록 등에 사용)
+function pfUid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// 날짜를 'YYYY-MM' 형태의 키로 변환 (비상금 기록 날짜 저장용)
+function monthKey(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+/* ================= 5. 월급 배분기 =================
+   데이터 구조:
+   salCats = [
+     { id, name, open, items:[ {id, name, amount} ] }
+   ]
+*/
+const SAL_DEFAULT_CATS = ['고정지출','생활비','저축','투자','자기계발 & 취미'];
+const SAL_COLORS = ['#8B5CF6','#34D399','#FBBF24','#60A5FA','#F472B6','#FB923C','#2DD4BF','#A78BFA'];
+
+let salCats = [];
+
+function makeCat(name){ return {id:pfUid(), name, open:true, items:[]}; }
+
+function loadSalary(){
+  try{
+    const d = JSON.parse(localStorage.getItem('richcalc_salary_v2')||'null');
+    if(d && Array.isArray(d.cats) && d.cats.length>0){
+      salCats = d.cats;
+      if(d.income!==undefined) document.getElementById('sal-income').value = d.income;
+    } else {
+      salCats = SAL_DEFAULT_CATS.map(makeCat);
+    }
+  }catch(e){
+    salCats = SAL_DEFAULT_CATS.map(makeCat);
+  }
+}
+
+function saveSalary(){
+  const income = parseFloat(document.getElementById('sal-income').value)||0;
+  localStorage.setItem('richcalc_salary_v2', JSON.stringify({income, cats:salCats}));
+  const ind = document.getElementById('sal-save-indicator');
+  ind.classList.add('show');
+  clearTimeout(window._salSaveTimeout);
+  window._salSaveTimeout = setTimeout(()=>ind.classList.remove('show'), 1200);
+}
+
+function salIncome(){ return Math.max(0, parseFloat(document.getElementById('sal-income').value)||0) * 10000; } // 만원 → 원
+function catTotal(c){ return c.items.reduce((s,x)=>s+(parseFloat(x.amount)||0)*10000, 0); } // 원 단위
+function totalAllocated(){ return salCats.reduce((s,c)=>s+catTotal(c), 0); }
+
+// 카테고리 리스트(DOM)는 그대로 두고 요약/비율바/각 카테고리 합계 숫자만 갱신
+// (금액 입력 중 매 타이핑마다 리스트를 다시 그리면 커서/소수점 입력이 깨지므로 분리)
+function updateSalarySummary(){
+  const inc = salIncome();
+
+  renderRatioBar(inc);
+
+  // 카테고리별 합계·비율 텍스트만 갱신 (input은 건드리지 않음)
+  salCats.forEach((cat, ci)=>{
+    const total = catTotal(cat);
+    const pct = inc>0 ? Math.round(total/inc*100) : 0;
+    const totalEl = document.querySelector(`#sub-${cat.id}`)?.previousElementSibling?.querySelector('.cat-total');
+    const pctEl = document.querySelector(`#sub-${cat.id}`)?.previousElementSibling?.querySelector('.cat-pct');
+    if(totalEl) totalEl.textContent = total>0 ? formatManwon(total/10000) : '—';
+    if(pctEl) pctEl.textContent = inc>0 && total>0 ? pct+'%' : '';
+  });
+
+  const alloc = totalAllocated();
+  const reserve = inc - alloc;
+  const resEl = document.getElementById('sal-reserve-amt');
+  const resHint = document.getElementById('sal-reserve-hint');
+  resEl.className = 'sal-reserve-amt';
+  if(inc<=0){
+    resEl.textContent = '—'; resHint.textContent = '월급을 입력하면 자동 계산됩니다';
+  } else if(reserve<0){
+    resEl.textContent = formatManwon(-reserve/10000)+' 초과';
+    resEl.classList.add('over');
+    resHint.textContent = '배분 합계가 월급을 초과했어요';
+  } else if(reserve===0){
+    resEl.textContent = '0원'; resEl.classList.add('zero'); resHint.textContent = '전부 배분됨';
+  } else {
+    resEl.textContent = formatManwon(reserve/10000);
+    resEl.classList.add('pos');
+    resHint.textContent = `배분하고 남은 ${Math.round(reserve/inc*100)}%가 자동으로 비상금이 돼요`;
+  }
+
+  document.getElementById('sal-total-amt').textContent = inc>0 ? formatManwon(alloc/10000) : '—';
+  document.getElementById('sal-total-pct').textContent = inc>0 ? Math.round(alloc/inc*100)+'%' : '—';
+  document.getElementById('sal-cat-count').textContent = salCats.length+'개';
+  document.getElementById('sal-annual').textContent = inc>0 ? formatManwon(alloc*12/10000) : '—';
+
+  if(typeof renderReserveSummary==='function') renderReserveSummary();
+
+  saveSalary();
+}
+
+function renderSalary(){
+  const inc = salIncome();
+
+  renderRatioBar(inc);
+  renderCatList(inc);
+
+  const alloc = totalAllocated();
+  const reserve = inc - alloc;
+  const resEl = document.getElementById('sal-reserve-amt');
+  const resHint = document.getElementById('sal-reserve-hint');
+  resEl.className = 'sal-reserve-amt';
+  if(inc<=0){
+    resEl.textContent = '—'; resHint.textContent = '월급을 입력하면 자동 계산됩니다';
+  } else if(reserve<0){
+    resEl.textContent = formatManwon(-reserve/10000)+' 초과';
+    resEl.classList.add('over');
+    resHint.textContent = '배분 합계가 월급을 초과했어요';
+  } else if(reserve===0){
+    resEl.textContent = '0원'; resEl.classList.add('zero'); resHint.textContent = '전부 배분됨';
+  } else {
+    resEl.textContent = formatManwon(reserve/10000);
+    resEl.classList.add('pos');
+    resHint.textContent = `배분하고 남은 ${Math.round(reserve/inc*100)}%가 자동으로 비상금이 돼요`;
+  }
+
+  document.getElementById('sal-total-amt').textContent = inc>0 ? formatManwon(alloc/10000) : '—';
+  document.getElementById('sal-total-pct').textContent = inc>0 ? Math.round(alloc/inc*100)+'%' : '—';
+  document.getElementById('sal-cat-count').textContent = salCats.length+'개';
+  document.getElementById('sal-annual').textContent = inc>0 ? formatManwon(alloc*12/10000) : '—';
+
+  if(typeof renderReserveSummary==='function') renderReserveSummary();
+
+  saveSalary();
+}
+
+function renderRatioBar(inc){
+  const bar = document.getElementById('sal-ratio-bar');
+  const leg = document.getElementById('sal-ratio-legend');
+  bar.innerHTML=''; leg.innerHTML='';
+  if(inc<=0) return;
+  const reserve = Math.max(0, inc - totalAllocated());
+
+  salCats.forEach((c,i)=>{
+    const t = catTotal(c); if(t<=0) return;
+    const pct = t/inc*100, col = SAL_COLORS[i%SAL_COLORS.length];
+    const seg = document.createElement('div');
+    seg.className='sal-ratio-seg'; seg.style.flex=pct; seg.style.background=col;
+    bar.appendChild(seg);
+    const row = document.createElement('div'); row.className='sal-leg-row';
+    row.innerHTML = `<div class="sal-leg-left"><div class="sal-leg-dot" style="background:${col}"></div><span class="sal-leg-name">${c.name||'—'}</span><span class="sal-leg-pct">${Math.round(pct)}%</span></div><span class="sal-leg-amt">${formatManwon(t/10000)}</span>`;
+    leg.appendChild(row);
+  });
+
+  if(reserve>0){
+    const pct = reserve/inc*100;
+    const seg = document.createElement('div');
+    seg.className='sal-ratio-seg'; seg.style.flex=pct; seg.style.background='#DDD5C2';
+    bar.appendChild(seg);
+    const row = document.createElement('div'); row.className='sal-leg-row';
+    row.style.background = '#F2ECE0';
+    row.innerHTML = `<div class="sal-leg-left"><div class="sal-leg-dot" style="background:#55555f"></div><span class="sal-leg-name" style="color:var(--sub)">비상금</span><span class="sal-leg-pct">${Math.round(pct)}%</span></div><span class="sal-leg-amt" style="color:var(--sub)">${formatManwon(reserve/10000)}</span>`;
+    leg.appendChild(row);
+  }
+}
+
+function renderCatList(inc){
+  const el = document.getElementById('sal-cat-list');
+  el.innerHTML = '';
+
+  salCats.forEach((cat, ci)=>{
+    const total = catTotal(cat);
+    const pct = inc>0 ? Math.round(total/inc*100) : 0;
+    const color = SAL_COLORS[ci % SAL_COLORS.length];
+
+    const wrap = document.createElement('div'); wrap.className='cat-item';
+
+    const hdr = document.createElement('div'); hdr.className='cat-header';
+    hdr.innerHTML = `
+      <span class="cat-chevron ${cat.open?'open':''}" id="chev-${cat.id}">▶</span>
+      <span class="cat-color-dot" style="background:${color}"></span>
+      <input class="cat-name-inp" type="text" placeholder="카테고리 이름" value="${cat.name}"
+        oninput="salCats[${ci}].name=this.value; saveSalary(); renderRatioBar(salIncome());"
+        onclick="event.stopPropagation()">
+      <span class="cat-total">${total>0 ? formatManwon(total/10000) : '—'}</span>
+      <span class="cat-pct">${inc>0 && total>0 ? pct+'%' : ''}</span>
+      <button class="cat-add-item-btn" onclick="event.stopPropagation(); toggleAddRow('${cat.id}')" title="항목 추가">+</button>`;
+    hdr.addEventListener('click', ()=>toggleCat(ci));
+    wrap.appendChild(hdr);
+
+    const sub = document.createElement('div');
+    sub.className = 'sub-items' + (cat.open?' open':'');
+    sub.id = 'sub-'+cat.id;
+
+    cat.items.forEach((item, ii)=>{
+      const row = document.createElement('div'); row.className='sub-item';
+      row.innerHTML = `
+        <input class="sub-name-inp" type="text" placeholder="항목 이름" value="${item.name}"
+          oninput="salCats[${ci}].items[${ii}].name=this.value; saveSalary();">
+        <div class="sub-divider"></div>
+        <input class="sub-amt-inp" type="text" inputmode="decimal" placeholder="0" value="${item.amount||''}"
+          oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'\$1'); salCats[${ci}].items[${ii}].amount=parseFloat(this.value)||0; updateSalarySummary();">
+        <span class="sub-unit-lbl">만원</span>
+        <button class="sub-del" onclick="deleteItem(${ci},${ii})">×</button>`;
+      sub.appendChild(row);
+    });
+
+    const addRow = document.createElement('div');
+    addRow.className = 'sub-add-row';
+    addRow.id = 'addrow-'+cat.id;
+    addRow.innerHTML = `
+      <input class="sub-add-name" type="text" placeholder="항목 이름 (예: 월세, 식비)">
+      <div class="sub-divider"></div>
+      <input class="sub-add-amt" type="text" inputmode="decimal" placeholder="금액">
+      <span class="sub-add-unit">만원</span>
+      <button class="sub-add-btn" onclick="addItem(${ci},'${cat.id}')">추가</button>`;
+    addRow.querySelector('.sub-add-amt').addEventListener('input', function(){
+      this.value = this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1');
+    });
+    addRow.querySelector('.sub-add-amt').addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(ci,cat.id); });
+    addRow.querySelector('.sub-add-name').addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(ci,cat.id); });
+
+    sub.appendChild(addRow);
+    wrap.appendChild(sub);
+    el.appendChild(wrap);
+  });
+}
+
+function toggleCat(ci){
+  salCats[ci].open = !salCats[ci].open;
+  const sub = document.getElementById('sub-'+salCats[ci].id);
+  const chev = document.getElementById('chev-'+salCats[ci].id);
+  if(sub) sub.className = 'sub-items'+(salCats[ci].open?' open':'');
+  if(chev) chev.className = 'cat-chevron'+(salCats[ci].open?' open':'');
+  saveSalary();
+}
+
+function toggleAddRow(catId){
+  const row = document.getElementById('addrow-'+catId);
+  if(!row) return;
+  row.classList.toggle('open');
+  if(row.classList.contains('open')) row.querySelector('.sub-add-name').focus();
+}
+
+function addItem(ci, catId){
+  const ar = document.getElementById('addrow-'+catId); if(!ar) return;
+  const ni = ar.querySelector('.sub-add-name'), ai = ar.querySelector('.sub-add-amt');
+  const name = ni.value.trim(), amount = parseFloat(ai.value)||0;
+  if(!name && amount<=0) return;
+  salCats[ci].items.push({id:pfUid(), name:name||'항목', amount});
+  ni.value=''; ai.value='';
+  renderSalary();
+  setTimeout(()=>{
+    const nr = document.getElementById('addrow-'+catId);
+    if(nr){ nr.classList.add('open'); nr.querySelector('.sub-add-name').focus(); }
+  }, 50);
+}
+
+function deleteItem(ci, ii){
+  salCats[ci].items.splice(ii,1);
+  renderSalary();
+}
+
+/* ── 카테고리 관리 모달 ── */
+function openCatManager(){
+  renderCatManager();
+  document.getElementById('cat-modal-backdrop').style.display = 'flex';
+}
+function closeCatManager(){
+  document.getElementById('cat-modal-backdrop').style.display = 'none';
+  renderSalary();
+}
+function renderCatManager(){
+  const el = document.getElementById('cat-manager-list');
+  el.innerHTML = '';
+  salCats.forEach((cat, ci)=>{
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--border);';
+    row.innerHTML = `
+      <input type="text" value="${cat.name}" placeholder="카테고리 이름"
+        style="flex:1;min-width:0;background:none;border:none;border-bottom:1px solid var(--border);outline:none;
+               font-family:'Pretendard',sans-serif;font-size:14px;color:var(--text);padding:4px 2px;"
+        oninput="salCats[${ci}].name=this.value; saveSalary();">
+      <span style="flex-shrink:0;font-size:12px;color:var(--sub);min-width:48px;text-align:right;">${cat.items.length}개 항목</span>
+      <button onclick="moveCat(${ci},-1)" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;color:var(--sub);cursor:pointer;font-size:13px;width:26px;height:26px;" title="위로">↑</button>
+      <button onclick="moveCat(${ci},1)" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;color:var(--sub);cursor:pointer;font-size:13px;width:26px;height:26px;" title="아래로">↓</button>
+      <button onclick="deleteCatFromManager(${ci})" style="flex-shrink:0;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);border-radius:6px;color:var(--bad);cursor:pointer;font-size:14px;width:26px;height:26px;line-height:1;" title="삭제">×</button>`;
+    el.appendChild(row);
+  });
+}
+function moveCat(ci, dir){
+  const ti = ci+dir; if(ti<0||ti>=salCats.length) return;
+  [salCats[ci], salCats[ti]] = [salCats[ti], salCats[ci]];
+  saveSalary();
+  renderCatManager();
+  renderSalary();
+}
+function deleteCatFromManager(ci){
+  salCats.splice(ci,1);
+  saveSalary();
+  renderCatManager();
+  renderSalary();
+}
+function addCatFromManager(){
+  const inp = document.getElementById('cat-manager-new-name');
+  const name = inp.value.trim(); if(!name) return;
+  salCats.push(makeCat(name)); saveSalary();
+  inp.value=''; renderCatManager();
+}
+document.getElementById('cat-modal-backdrop').addEventListener('click', function(e){
+  if(e.target===this) closeCatManager();
+});
+document.getElementById('cat-manager-new-name').addEventListener('keydown', e=>{
+  if(e.key==='Enter') addCatFromManager();
+});
+
+document.getElementById('sal-income').addEventListener('input', renderSalary);
+
+/* ================= 비상금 누적 추적 =================
+   매달 계산되는 "비상금"(미배분 금액)은 자동으로 사라지는 값이라,
+   실제로 모아둔 금액을 사용자가 직접 눌러서 누적시키는 구조.
+   richcalc_reserve_log_v1 = [{id, name, type:'add'|'sub', amount(만원), date}]
+*/
+let reserveLog = [];
+
+function loadReserveLog(){
+  try{
+    reserveLog = JSON.parse(localStorage.getItem('richcalc_reserve_log_v1')||'[]');
+    if(!Array.isArray(reserveLog)) reserveLog = [];
+  }catch(e){ reserveLog = []; }
+}
+function saveReserveLog(){
+  localStorage.setItem('richcalc_reserve_log_v1', JSON.stringify(reserveLog));
+}
+function reserveCumulativeTotal(){
+  return reserveLog.reduce((s,x)=> s + (x.type==='sub' ? -x.amount : x.amount), 0);
+}
+
+function renderReserveSummary(){
+  const total = reserveCumulativeTotal();
+  document.getElementById('reserve-cum-total').textContent = formatManwon(total);
+  const thisMonthWon = Math.max(0, salIncome() - totalAllocated());
+  document.getElementById('reserve-this-month').textContent = thisMonthWon>0 ? formatManwon(thisMonthWon/10000) : '—';
+}
+
+function addThisMonthToReserve(){
+  const thisMonthWon = Math.max(0, salIncome() - totalAllocated());
+  const msgBox = document.getElementById('reserve-add-msg');
+  if(thisMonthWon<=0){
+    msgBox.innerHTML = `<div class="msg warn">이번 달은 미배분(비상금)이 없어요.</div>`;
+    return;
+  }
+  const amount = thisMonthWon/10000;
+  const now = new Date();
+  const label = `${now.getMonth()+1}월 비상금`;
+  reserveLog.push({id:pfUid(), name:label, type:'add', amount, date:monthKey(now)});
+  saveReserveLog();
+  renderReserveSummary();
+  renderReserveLogList();
+  msgBox.innerHTML = `<div class="msg good">${formatManwon(amount)}을 누적 비상금에 더했어요.</div>`;
+}
+
+/* 누적 기록 관리 모달 */
+function openReserveLogModal(){
+  renderReserveLogList();
+  document.getElementById('reserve-log-modal-backdrop').style.display = 'flex';
+}
+function closeReserveLogModal(){
+  document.getElementById('reserve-log-modal-backdrop').style.display = 'none';
+  renderReserveSummary();
+}
+function addReserveLog(){
+  const nameInput = document.getElementById('reserve-log-name-input');
+  const typeInput = document.getElementById('reserve-log-type-input');
+  const amountInput = document.getElementById('reserve-log-amount-input');
+  const name = nameInput.value.trim() || (typeInput.value==='add' ? '입금' : '출금');
+  const type = typeInput.value;
+  const amount = parseFloat(amountInput.value);
+  if(!amount || amount<=0) return;
+  reserveLog.push({id:pfUid(), name, type, amount, date:monthKey(new Date())});
+  nameInput.value=''; amountInput.value='';
+  nameInput.focus();
+  saveReserveLog();
+  renderReserveLogList();
+}
+function removeReserveLog(id){
+  reserveLog = reserveLog.filter(x=>x.id!==id);
+  saveReserveLog();
+  renderReserveLogList();
+}
+function renderReserveLogList(){
+  const listEl = document.getElementById('reserve-log-list');
+  if(reserveLog.length===0){
+    listEl.innerHTML = `<div class="item-empty">아직 기록이 없어요.</div>`;
+  } else {
+    listEl.innerHTML = [...reserveLog].reverse().map(x=>`
+      <div class="item-row">
+        <div class="item-name">
+          <span class="item-color" style="background:${x.type==='add'?'#34D399':'#F87171'};"></span>
+          ${x.name}
+        </div>
+        <div class="item-amount" style="color:${x.type==='add'?'#34D399':'#F87171'};">${x.type==='add'?'+':'-'}${formatManwon(x.amount)}</div>
+        <button class="item-remove" onclick="removeReserveLog('${x.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('reserve-log-total').textContent = formatManwon(reserveCumulativeTotal());
+  renderReserveSummary();
+}
+['reserve-log-name-input','reserve-log-amount-input'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') addReserveLog(); });
+});
+document.getElementById('reserve-log-modal-backdrop').addEventListener('click', function(e){
+  if(e.target===this) closeReserveLogModal();
+});
+
+/* ================= 전체 초기화 ================= */
+loadSalary();
+renderSalary();
+loadReserveLog();
+renderReserveSummary();
+</script>
+</body>
+</html>

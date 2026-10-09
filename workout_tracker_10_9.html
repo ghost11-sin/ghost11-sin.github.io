@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRON LOG</title>
+<meta name="description" content="세트와 무게를 기록하고 노션에 저장해요">
+<meta name="icon" content="🏋️">
+<meta name="category" content="건강">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --surface2: #1a1a1a;
+    --border: #272727;
+    --accent: #e8ff00;
+    --accent2: #ff4444;
+    --text: #f0f0f0;
+    --muted: #555;
+    --muted2: #888;
+    --good: #39ff14;
+    --soso: #ffa500;
+    --bad: #ff4444;
+    --push: #7eb3ff;
+    --leg: #ff9060;
+    --pull: #b06bff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 80px 0;
+  }
+
+  /* ── STOPWATCH HEADER ── */
+  .sw-header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 20px 20px 16px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .sw-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted2);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .sw-display {
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    color: var(--muted2);
+    line-height: 1;
+    transition: color 0.3s;
+  }
+  .sw-display.running { color: var(--accent); }
+  .sw-start-btn {
+    margin-top: 12px;
+    padding: 10px 36px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  .sw-start-btn:hover { background: #fff; }
+  .sw-start-btn.running {
+    background: var(--surface2);
+    color: var(--muted2);
+    border: 1px solid var(--border);
+  }
+
+  /* ── CONTENT ── */
+  .content { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 28px; }
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  /* ── TOGGLE BUTTONS (컨디션) ── */
+  .btn-group { display: flex; gap: 8px; }
+  .toggle-btn {
+    flex: 1; padding: 12px 6px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted2);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s;
+    letter-spacing: 1px;
+  }
+  .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .toggle-btn.active.t-good { background: var(--good); border-color: var(--good); color: #000; }
+  .toggle-btn.active.t-soso { background: var(--soso); border-color: var(--soso); color: #000; }
+  .toggle-btn.active.t-bad  { background: var(--bad);  border-color: var(--bad);  color: #fff; }
+
+  /* ── ROUTINE CARDS ── */
+  .routine-group { display: flex; gap: 10px; }
+  .routine-card {
+    flex: 1;
+    padding: 16px 10px 14px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--muted2);
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; border-radius: 10px;
+    transition: all 0.18s;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .routine-card:hover { border-color: var(--muted2); transform: translateY(-2px); }
+  .routine-card .r-icon { font-size: 28px; line-height: 1; }
+  .routine-card .r-name {
+    font-size: 15px; font-weight: 900; letter-spacing: 1px;
+    color: var(--muted2); transition: color 0.18s;
+  }
+  .routine-card .r-desc {
+    font-size: 10px; font-weight: 400; color: var(--muted);
+    line-height: 1.4; transition: color 0.18s;
+  }
+
+  /* active states per routine */
+  .routine-card.active.r-push {
+    border-color: var(--push); background: rgba(126,179,255,0.08);
+  }
+  .routine-card.active.r-push .r-name { color: var(--push); }
+  .routine-card.active.r-push .r-desc { color: rgba(126,179,255,0.7); }
+
+  .routine-card.active.r-leg {
+    border-color: var(--leg); background: rgba(255,144,96,0.08);
+  }
+  .routine-card.active.r-leg .r-name { color: var(--leg); }
+  .routine-card.active.r-leg .r-desc { color: rgba(255,144,96,0.7); }
+
+  .routine-card.active.r-pull {
+    border-color: var(--pull); background: rgba(176,107,255,0.08);
+  }
+  .routine-card.active.r-pull .r-name { color: var(--pull); }
+  .routine-card.active.r-pull .r-desc { color: rgba(176,107,255,0.7); }
+
+  /* ── EXERCISE CARDS ── */
+  .exercise-list { display: flex; flex-direction: column; gap: 12px; }
+  .exercise-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 16px;
+    animation: fadeUp 0.25s ease both;
+  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
+
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .ex-name-input {
+    background: none; border: none;
+    border-bottom: 1.5px solid var(--border);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px; font-weight: 700;
+    width: 75%; padding: 4px 0; outline: none;
+    transition: border-color 0.15s;
+  }
+  .ex-name-input:focus { border-bottom-color: var(--accent); }
+  .ex-name-input::placeholder { color: var(--muted); font-weight: 400; }
+
+  /* 이전 기록 표시 */
+  .past-record {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    font-size: 12px;
+    color: var(--muted2);
+    line-height: 1.8;
+    font-weight: 300;
+    display: none;
+  }
+  .past-record.visible { display: block; }
+  .past-record-label {
+    font-size: 9px; letter-spacing: 2px; color: var(--accent);
+    text-transform: uppercase; font-weight: 700; margin-bottom: 4px;
+  }
+  .del-card-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--muted2); width: 28px; height: 28px;
+    border-radius: 4px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .del-card-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* SET TABLE */
+  .set-header {
+    display: grid;
+    grid-template-columns: 28px 46px 1fr 1fr 90px 24px;
+    gap: 6px; margin-bottom: 6px;
+  }
+  .set-col-h {
+    font-size: 9px; letter-spacing: 2px; color: var(--muted);
+    text-align: center; text-transform: uppercase; font-weight: 500;
+  }
+  .set-row {
+    display: grid;
+    grid-template-columns: 28px 46px 1fr 1fr 90px 24px;
+    gap: 6px; align-items: center; margin-bottom: 6px;
+    animation: fadeUp 0.2s ease both;
+  }
+  .set-num {
+    font-size: 13px; font-weight: 700;
+    color: var(--muted); text-align: center;
+  }
+  .set-input {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; padding: 8px 6px; border-radius: 4px;
+    text-align: center; outline: none; width: 100%;
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  .set-input:focus { border-color: var(--accent); }
+  .set-input::-webkit-inner-spin-button { display: none; }
+
+  /* 세트 타입 버튼 (일반/예열/드롭) */
+  .set-type-btn {
+    padding: 6px 2px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 10px; font-weight: 700;
+    cursor: pointer; border-radius: 4px;
+    transition: all 0.15s; text-align: center;
+    white-space: nowrap;
+  }
+  .set-type-btn:hover { border-color: var(--muted2); color: var(--text); }
+  .set-type-btn.warmup { background: rgba(126,179,255,0.15); border-color: var(--push); color: var(--push); }
+  .set-type-btn.drop   { background: rgba(255,68,68,0.15);  border-color: var(--accent2); color: var(--accent2); }
+
+  /* RIR 입력 (운동당 1회) */
+  .rir-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+  .rir-label {
+    font-size: 11px; color: var(--muted2); font-weight: 500;
+    white-space: nowrap;
+  }
+  .rir-btns { display: flex; gap: 4px; flex: 1; }
+  .rir-btn {
+    flex: 1; padding: 7px 0;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted2); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s;
+  }
+  .rir-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rir-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .rest-btn {
+    padding: 7px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer; border-radius: 4px;
+    transition: all 0.15s; text-align: center;
+    white-space: nowrap;
+  }
+  .rest-btn:hover { border-color: var(--soso); color: var(--soso); }
+  .rest-btn.active { background: var(--soso); color: #000; border-color: var(--soso); font-weight: 700; }
+
+  .add-set-row {
+    display: flex; gap: 8px; margin-top: 6px;
+  }
+  .add-set-btn {
+    flex: 1; padding: 8px;
+    border: 1px dashed var(--border); background: none;
+    color: var(--muted); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s;
+  }
+  .add-set-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 세트 삭제 버튼 */
+  .del-set-btn {
+    background: none; border: none;
+    color: var(--muted); font-size: 14px;
+    cursor: pointer; padding: 0 4px;
+    transition: color 0.15s; line-height: 1;
+  }
+  .del-set-btn:hover { color: var(--accent2); }
+
+  /* ── 자동완성 ── */
+  .name-wrap { position: relative; width: 75%; }
+  .ex-name-input { width: 100%; }
+  .autocomplete-list {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; z-index: 50; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .autocomplete-item {
+    padding: 10px 14px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background 0.1s; color: var(--text);
+  }
+  .autocomplete-item:hover, .autocomplete-item.selected {
+    background: var(--border); color: var(--accent);
+  }
+
+  .add-ex-btn {
+    width: 100%; padding: 13px;
+    border: 1.5px dashed var(--border); background: none;
+    color: var(--muted); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s;
+    margin-top: 10px;
+  }
+  .add-ex-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── REST TIMER FLOATING ── */
+  .rest-timer-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 2px solid var(--soso);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 60;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .rest-timer-bar.visible { transform: translateY(0); }
+  .rest-bar-left { display: flex; flex-direction: column; gap: 2px; }
+  .rest-bar-label { font-size: 10px; letter-spacing: 2px; color: var(--soso); font-weight: 500; }
+  .rest-bar-time {
+    font-size: 36px; font-weight: 900;
+    color: var(--soso); letter-spacing: 3px; line-height: 1;
+  }
+  .rest-bar-time.urgent { color: var(--bad); }
+  .rest-bar-right { display: flex; gap: 8px; align-items: center; }
+  .rest-preset-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted2); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s;
+  }
+  .rest-preset-btn:hover { border-color: var(--soso); color: var(--soso); }
+  .rest-skip-btn {
+    padding: 8px 16px;
+    border: 1.5px solid var(--accent); background: none;
+    color: var(--accent); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s;
+  }
+  .rest-skip-btn:hover { background: var(--accent); color: #000; }
+
+  /* REST PROGRESS BAR */
+  .rest-progress-track {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 3px; background: var(--border); z-index: 61;
+    transform: translateY(0);
+    display: none;
+  }
+  .rest-progress-track.visible { display: block; }
+  .rest-progress-fill {
+    height: 100%; background: var(--soso);
+    transition: width 1s linear, background 0.3s;
+  }
+
+  /* ── VOLUME ── */
+  .volume-box {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 16px;
+  }
+  .volume-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .volume-ex-name { font-size: 13px; color: var(--text); font-weight: 500; }
+  .volume-val { font-size: 16px; font-weight: 900; color: var(--accent); white-space: nowrap; padding-left: 10px; }
+  .volume-detail { font-size: 11px; color: var(--muted2); font-weight: 300; }
+  .volume-total {
+    border-top: 1px solid var(--border);
+    padding-top: 10px; margin-top: 4px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .volume-total-label { font-size: 11px; letter-spacing: 2px; color: var(--muted); font-weight: 500; }
+  .volume-total-val { font-size: 24px; font-weight: 900; color: var(--accent); }
+  .volume-empty { text-align: center; color: var(--muted); font-size: 12px; padding: 12px; font-weight: 300; }
+
+  /* 세트 타입 태그 (한 줄 압축용) */
+  .set-tag-warmup, .set-tag-drop { font-size: 11px; }
+
+  /* ── MEMO ── */
+  .memo-input {
+    width: 100%; background: var(--surface);
+    border: 1.5px solid var(--border); color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; padding: 12px 14px; border-radius: 8px;
+    outline: none; resize: none; min-height: 80px;
+    transition: border-color 0.15s; line-height: 1.7; font-weight: 300;
+  }
+  .memo-input:focus { border-color: var(--accent); }
+  .memo-input::placeholder { color: var(--muted); }
+
+  /* ── END BUTTON ── */
+  .end-btn {
+    width: 100%; padding: 16px;
+    background: var(--accent2); color: #fff;
+    border: none; font-family: 'Noto Sans KR', sans-serif;
+    font-size: 16px; font-weight: 700; letter-spacing: 2px;
+    cursor: pointer; border-radius: 8px; transition: all 0.15s;
+    margin-top: 8px;
+  }
+  .end-btn:hover { background: #ff6666; transform: translateY(-1px); }
+  .end-btn:active { transform: translateY(0); }
+
+  /* ── POPUP ── */
+  .popup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .popup-overlay.visible {
+    display: flex;
+  }
+
+  .popup {
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 28px 24px;
+    width: 100%; max-width: 400px;
+    max-height: 90vh; overflow-y: auto;
+  }
+
+  .popup-title {
+    font-size: 22px; font-weight: 900;
+    color: var(--accent); letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .popup-date { font-size: 12px; color: var(--muted2); margin-bottom: 24px; font-weight: 300; }
+
+  .popup-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .popup-stat {
+    background: var(--surface2); border-radius: 8px; padding: 14px;
+    border: 1px solid var(--border);
+  }
+  .popup-stat-label { font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; font-weight: 500; }
+  .popup-stat-val { font-size: 26px; font-weight: 900; color: var(--accent); }
+  .popup-stat-unit { font-size: 11px; color: var(--muted2); font-weight: 300; }
+
+  .popup-exercises { margin-bottom: 20px; }
+  .popup-ex-title { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; font-weight: 500; }
+  .popup-ex-item {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .popup-ex-item:last-child { border-bottom: none; }
+  .popup-ex-name { font-weight: 700; color: var(--text); }
+  .popup-ex-vol { color: var(--accent); font-weight: 700; font-size: 13px; }
+
+  .popup-badges { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .popup-badge {
+    padding: 4px 12px; border-radius: 4px;
+    font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    background: var(--surface2);
+  }
+  .popup-badge.push { color: var(--push); border: 1px solid var(--push); }
+  .popup-badge.leg  { color: var(--leg);  border: 1px solid var(--leg); }
+  .popup-badge.full { color: var(--full); border: 1px solid var(--full); }
+  .popup-badge.good { color: var(--good); border: 1px solid var(--good); }
+  .popup-badge.soso { color: var(--soso); border: 1px solid var(--soso); }
+  .popup-badge.bad  { color: var(--bad);  border: 1px solid var(--bad); }
+
+  .popup-memo { font-size: 13px; color: var(--muted2); font-style: italic; border-left: 2px solid var(--border); padding-left: 12px; margin-bottom: 20px; line-height: 1.6; font-weight: 300; }
+
+  .popup-btn-row { display: flex; gap: 10px; margin-top: 0; }
+  .popup-copy-btn {
+    flex: 1; padding: 14px;
+    background: var(--surface2); color: var(--text);
+    border: 1.5px solid var(--border);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s;
+  }
+  .popup-copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .popup-copy-btn.copied { border-color: var(--good); color: var(--good); }
+  .popup-close-btn {
+    flex: 1; padding: 14px;
+    background: var(--accent); color: #000;
+    border: none; font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px; font-weight: 700; letter-spacing: 2px;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s;
+  }
+  .popup-close-btn:hover { background: #fff; }
+
+  /* ── 종료 확인 다이얼로그 ── */
+  .confirm-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .confirm-overlay.visible { display: flex; }
+  .confirm-box {
+    background: var(--surface);
+    border: 2px solid var(--accent2);
+    border-radius: 12px;
+    padding: 28px 24px;
+    width: 100%; max-width: 320px;
+    text-align: center;
+  }
+  .confirm-title { font-size: 18px; font-weight: 900; color: var(--text); margin-bottom: 8px; }
+  .confirm-desc  { font-size: 13px; color: var(--muted2); margin-bottom: 24px; line-height: 1.6; font-weight: 300; }
+  .confirm-btns  { display: flex; gap: 10px; }
+  .confirm-cancel {
+    flex: 1; padding: 13px;
+    background: var(--surface2); color: var(--text);
+    border: 1.5px solid var(--border);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s;
+  }
+  .confirm-cancel:hover { border-color: var(--muted2); }
+  .confirm-ok {
+    flex: 1; padding: 13px;
+    background: var(--accent2); color: #fff;
+    border: none;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s;
+  }
+  .confirm-ok:hover { background: #ff6666; }
+
+  /* ── 이전 기록 비교 ── */
+  .compare-section { margin-bottom: 20px; }
+  .compare-title {
+    font-size: 10px; letter-spacing: 2px; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 10px; font-weight: 500;
+  }
+  .compare-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 12px 14px; margin-bottom: 8px;
+  }
+  .compare-card-header {
+    display: flex; justify-content: space-between;
+    margin-bottom: 8px; align-items: center;
+  }
+  .compare-card-date { font-size: 11px; color: var(--muted2); font-weight: 500; }
+  .compare-card-vol  { font-size: 15px; font-weight: 900; color: var(--accent); }
+  .compare-card-vol.better { color: var(--good); }
+  .compare-card-vol.worse  { color: var(--bad); }
+  .compare-diff {
+    font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 3px; background: var(--border);
+  }
+  .compare-diff.up   { color: var(--good); }
+  .compare-diff.down { color: var(--bad); }
+  .compare-ex { font-size: 12px; color: var(--muted2); line-height: 1.8; font-weight: 300; }
+  .compare-loading { font-size: 12px; color: var(--muted2); text-align: center; padding: 12px; }
+
+  /* 노션 저장 상태 */
+  .notion-status {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 500;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted2);
+  }
+  .notion-status.saving { color: var(--soso); border-color: var(--soso); }
+  .notion-status.success { color: var(--good); border-color: var(--good); }
+  .notion-status.error   { color: var(--bad);  border-color: var(--bad); }
+</style>
+</head>
+<body>
+
+<!-- ── STOPWATCH HEADER ── -->
+<div class="sw-header">
+  <div class="sw-label">운동 시간</div>
+  <div class="sw-display" id="swDisplay">00:00:00</div>
+  <button class="sw-start-btn" id="swStartBtn" onclick="swToggle()">운동 시작</button>
+</div>
+
+<div class="content">
+
+  <!-- ROUTINE -->
+  <div class="section">
+    <div class="section-label">오늘의 루틴</div>
+    <div class="routine-group">
+      <button class="routine-card" data-group="routine" data-val="push" onclick="selectRoutine(this, 'push')">
+        <div class="r-icon">🔥</div>
+        <div class="r-name">PUSH</div>
+        <div class="r-desc">가슴 · 어깨 · 삼두</div>
+      </button>
+      <button class="routine-card" data-group="routine" data-val="leg" onclick="selectRoutine(this, 'leg')">
+        <div class="r-icon">🦵</div>
+        <div class="r-name">LEG</div>
+        <div class="r-desc">하체 · 둔근 · 종아리</div>
+      </button>
+      <button class="routine-card" data-group="routine" data-val="pull" onclick="selectRoutine(this, 'pull')">
+        <div class="r-icon">💪</div>
+        <div class="r-name">PULL</div>
+        <div class="r-desc">등 · 이두 · 후면삼각</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- CONDITION -->
+  <div class="section">
+    <div class="section-label">오늘의 컨디션</div>
+    <div class="btn-group">
+      <button class="toggle-btn" data-group="cond" data-val="good">💪 GOOD</button>
+      <button class="toggle-btn" data-group="cond" data-val="soso">😐 SOSO</button>
+      <button class="toggle-btn" data-group="cond" data-val="bad">😮‍💨 BAD</button>
+    </div>
+  </div>
+
+  <!-- EXERCISES -->
+  <div class="section">
+    <div class="section-label">운동 기록</div>
+    <div class="exercise-list" id="exerciseList"></div>
+    <button class="add-ex-btn" id="addExBtn">+ 운동 추가</button>
+  </div>
+
+  <!-- VOLUME -->
+  <div class="section">
+    <div class="section-label">오늘의 총 볼륨</div>
+    <div class="volume-box" id="volumeBox">
+      <div class="volume-empty">운동을 추가하면 볼륨이 계산돼요</div>
+    </div>
+  </div>
+
+  <!-- MEMO -->
+  <div class="section">
+    <div class="section-label">메모</div>
+    <textarea class="memo-input" id="memoInput" placeholder="오늘 특이사항, 느낀 점..."></textarea>
+  </div>
+
+  <!-- END -->
+  <button class="end-btn" onclick="showConfirm()">🏁 운동 끝</button>
+
+</div>
+
+<!-- ── REST TIMER BAR ── -->
+<div class="rest-timer-bar" id="restTimerBar">
+  <div class="rest-bar-left">
+    <div class="rest-bar-label">휴식 중</div>
+    <div class="rest-bar-time" id="restDisplay">01:00</div>
+  </div>
+  <div class="rest-bar-right">
+    <button class="rest-preset-btn" onclick="addRestTime(30)">+30초</button>
+    <button class="rest-preset-btn" onclick="addRestTime(60)">+1분</button>
+    <button class="rest-preset-btn" onclick="addRestTime(120)">+2분</button>
+    <button class="rest-skip-btn" onclick="skipRest()">건너뛰기</button>
+  </div>
+</div>
+<div class="rest-progress-track" id="restProgressTrack">
+  <div class="rest-progress-fill" id="restProgressFill" style="width:100%"></div>
+</div>
+
+<!-- ── 종료 확인 다이얼로그 ── -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">운동을 종료할까요?</div>
+    <div class="confirm-desc">지금까지의 기록이 노션에 저장되고<br>운동이 종료돼요.</div>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">계속하기</button>
+      <button class="confirm-ok" onclick="confirmEnd()">종료하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── POPUP ── -->
+<div class="popup-overlay" id="popupOverlay">
+  <div class="popup" id="popup">
+    <div class="popup-title">운동 완료 🏁</div>
+    <div class="popup-date" id="popupDate"></div>
+    <div class="popup-badges" id="popupBadges"></div>
+    <div class="popup-stats" id="popupStats"></div>
+    <div class="popup-exercises" id="popupExercises"></div>
+    <div class="compare-section" id="compareSection" style="display:none">
+      <div class="compare-title">같은 루틴 이전 기록</div>
+      <div id="compareContent"></div>
+    </div>
+    <div id="popupMemo" style="display:none" class="popup-memo"></div>
+    <div class="notion-status" id="notionStatus">⏳ 노션에 저장 중...</div>
+    <div class="popup-btn-row">
+      <button class="popup-copy-btn" id="copyBtn" onclick="copyToClipboard()">📋 복사</button>
+      <button class="popup-close-btn" onclick="closePopup()">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let state = { routine: null, cond: null };
+let exIdCounter = 0, setIdCounter = 0;
+
+// ── DATE ──
+const now = new Date();
+const DAYS = ['일','월','화','수','목','금','토'];
+const todayStr = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${DAYS[now.getDay()]})`;
+
+// ── ROUTINE CARDS ──
+function selectRoutine(btn, val) {
+  document.querySelectorAll('.routine-card').forEach(b =>
+    b.classList.remove('active','r-push','r-leg','r-pull'));
+  state.routine = val;
+  btn.classList.add('active', 'r-' + val);
+}
+
+// ── TOGGLE BUTTONS (컨디션) ──
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const g = btn.dataset.group;
+    document.querySelectorAll(`[data-group="${g}"]`).forEach(b =>
+      b.classList.remove('active','t-good','t-soso','t-bad'));
+    state[g] = btn.dataset.val;
+    btn.classList.add('active', 't-' + btn.dataset.val);
+  });
+});
+
+// ── STOPWATCH ──
+let swElapsed = 0, swRunning = false, swInterval = null;
+
+function swToggle() {
+  const btn = document.getElementById('swStartBtn');
+  const disp = document.getElementById('swDisplay');
+  if (!swRunning) {
+    swRunning = true;
+    btn.textContent = '일시정지';
+    btn.classList.add('running');
+    disp.classList.add('running');
+    swInterval = setInterval(() => {
+      swElapsed++;
+      const h = Math.floor(swElapsed / 3600);
+      const m = Math.floor((swElapsed % 3600) / 60);
+      const s = swElapsed % 60;
+      disp.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }, 1000);
+  } else {
+    swRunning = false;
+    clearInterval(swInterval);
+    btn.textContent = '계속하기';
+    btn.classList.remove('running');
+    disp.classList.remove('running');
+  }
+}
+
+function swGetFormatted() {
+  const h = Math.floor(swElapsed / 3600);
+  const m = Math.floor((swElapsed % 3600) / 60);
+  const s = swElapsed % 60;
+  if (h > 0) return `${h}시간 ${m}분 ${s}초`;
+  if (m > 0) return `${m}분 ${s}초`;
+  return `${s}초`;
+}
+
+// ── REST TIMER ──
+let restRemaining = 0, restTotal = 0;
+let restInterval = null, restRunning = false;
+const DEFAULT_REST = 60;
+
+function startRest(eid, sid) {
+  // toggle: if already running for same set, skip it
+  if (restRunning) { skipRest(); return; }
+
+  restTotal = DEFAULT_REST;
+  restRemaining = DEFAULT_REST;
+  restRunning = true;
+
+  document.getElementById('restTimerBar').classList.add('visible');
+  document.getElementById('restProgressTrack').classList.add('visible');
+  updateRestUI();
+
+  restInterval = setInterval(() => {
+    restRemaining--;
+    updateRestUI();
+    if (restRemaining <= 0) {
+      skipRest();
+      playAlarm();
+      document.getElementById('restDisplay').textContent = '완료! 💪';
+      document.getElementById('restTimerBar').classList.add('visible');
+      setTimeout(() => {
+        document.getElementById('restTimerBar').classList.remove('visible');
+        document.getElementById('restProgressTrack').classList.remove('visible');
+      }, 1500);
+    }
+  }, 1000);
+}
+
+function updateRestUI() {
+  const m = String(Math.floor(restRemaining / 60)).padStart(2,'0');
+  const s = String(restRemaining % 60).padStart(2,'0');
+  const disp = document.getElementById('restDisplay');
+  disp.textContent = `${m}:${s}`;
+  disp.className = 'rest-bar-time' + (restRemaining <= 10 ? ' urgent' : '');
+  const pct = restTotal > 0 ? (restRemaining / restTotal) * 100 : 0;
+  const fill = document.getElementById('restProgressFill');
+  fill.style.width = pct + '%';
+  fill.style.background = restRemaining <= 10 ? 'var(--bad)' : 'var(--soso)';
+}
+
+function addRestTime(sec) {
+  restRemaining += sec;
+  restTotal += sec;
+  updateRestUI();
+}
+
+function skipRest() {
+  clearInterval(restInterval);
+  restRunning = false;
+  document.getElementById('restTimerBar').classList.remove('visible');
+  document.getElementById('restProgressTrack').classList.remove('visible');
+  // reset all rest buttons
+  document.querySelectorAll('.rest-btn').forEach(b => b.classList.remove('active'));
+}
+
+// ── EXERCISES ──
+function addExercise() {
+  const eid = ++exIdCounter;
+  const card = document.createElement('div');
+  card.className = 'exercise-card';
+  card.dataset.eid = eid;
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="name-wrap">
+        <input class="ex-name-input" type="text" placeholder="운동명 (예: 벤치프레스)" autocomplete="off">
+        <div class="autocomplete-list" style="display:none"></div>
+      </div>
+      <button class="del-card-btn" onclick="removeExercise(${eid})">✕</button>
+    </div>
+    <div class="set-header">
+      <div class="set-col-h">SET</div>
+      <div class="set-col-h">타입</div>
+      <div class="set-col-h">KG</div>
+      <div class="set-col-h">횟수</div>
+      <div class="set-col-h">휴식</div>
+      <div></div>
+    </div>
+    <div class="past-record" id="pastRecord-${eid}">
+      <div class="past-record-label">지난 기록</div>
+      <div id="pastRecordContent-${eid}"></div>
+    </div>
+    <div class="set-list" id="setList-${eid}"></div>
+    <div class="add-set-row">
+      <button class="add-set-btn" onclick="addSet(${eid})">+ 세트 추가</button>
+    </div>
+    <div class="rir-row">
+      <div class="rir-label">RIR</div>
+      <div class="rir-btns" id="rirBtns-${eid}">
+        <button class="rir-btn" onclick="setRIR(${eid}, 0, this)">0</button>
+        <button class="rir-btn" onclick="setRIR(${eid}, 1, this)">1</button>
+        <button class="rir-btn" onclick="setRIR(${eid}, 2, this)">2</button>
+        <button class="rir-btn" onclick="setRIR(${eid}, 3, this)">3</button>
+        <button class="rir-btn" onclick="setRIR(${eid}, 4, this)">4+</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('exerciseList').appendChild(card);
+  const input = card.querySelector('.ex-name-input');
+  input.addEventListener('input', () => { updateVolume(); showAutocomplete(input); });
+  input.addEventListener('keydown', (e) => handleAutoKey(e, input));
+  input.addEventListener('blur', () => {
+    setTimeout(() => hideAutocomplete(input), 150);
+    registerExerciseName(input.value);
+    fetchPastExercise(eid, input.value.trim()); // 이전 기록 불러오기
+  });
+  addSet(eid);
+  updateVolume();
+}
+
+function removeExercise(eid) {
+  document.querySelector(`[data-eid="${eid}"]`)?.remove();
+  delete exerciseRIR[eid];
+  updateVolume();
+}
+
+// ── RIR (운동당 1회) ──
+const exerciseRIR = {}; // { eid: value }
+
+function setRIR(eid, val, btn) {
+  exerciseRIR[eid] = val;
+  document.querySelectorAll(`#rirBtns-${eid} .rir-btn`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function addSet(eid) {
+  const sid = ++setIdCounter;
+  const list = document.getElementById(`setList-${eid}`);
+  const prevRows = list.querySelectorAll('.set-row');
+  const num = prevRows.length + 1;
+
+  // 마지막 세트 값 불러오기
+  let lastKg = '', lastReps = '';
+  if (prevRows.length > 0) {
+    const lastInputs = prevRows[prevRows.length - 1].querySelectorAll('.set-input');
+    lastKg   = lastInputs[0].value;
+    lastReps = lastInputs[1].value;
+  }
+
+  const row = document.createElement('div');
+  row.className = 'set-row';
+  row.dataset.sid = sid;
+  row.dataset.type = 'normal'; // normal | warmup | drop
+  row.innerHTML = `
+    <div class="set-num">${num}</div>
+    <button class="set-type-btn" onclick="cycleSetType(this)" title="탭해서 세트 타입 변경">일반</button>
+    <input class="set-input" type="number" placeholder="60"  min="0" step="2.5" value="${lastKg}"   oninput="updateVolume()">
+    <input class="set-input" type="number" placeholder="8"   min="0"            value="${lastReps}" oninput="updateVolume()">
+    <button class="rest-btn" data-eid="${eid}" data-sid="${sid}" onclick="handleRestBtn(this, ${eid}, ${sid})">휴식 시작</button>
+    <button class="del-set-btn" onclick="removeSet(${eid}, ${sid})">✕</button>
+  `;
+  list.appendChild(row);
+  updateVolume();
+}
+
+// 일반 → 예열 → 드롭 → 일반 순환
+function cycleSetType(btn) {
+  const row = btn.closest('.set-row');
+  const current = row.dataset.type;
+  const next = current === 'normal' ? 'warmup' : current === 'warmup' ? 'drop' : 'normal';
+  row.dataset.type = next;
+  btn.classList.remove('warmup', 'drop');
+  if (next === 'warmup') { btn.textContent = '예열'; btn.classList.add('warmup'); }
+  else if (next === 'drop') { btn.textContent = '드롭'; btn.classList.add('drop'); }
+  else { btn.textContent = '일반'; }
+}
+
+function handleRestBtn(btn, eid, sid) {
+  unlockAudio(); // 클릭 시점에 AudioContext 미리 활성화
+  document.querySelectorAll('.rest-btn').forEach(b => b.classList.remove('active'));
+  if (restRunning) { skipRest(); return; }
+  btn.classList.add('active');
+  startRest(eid, sid);
+}
+
+function removeSet(eid, sid) {
+  const list = document.getElementById(`setList-${eid}`);
+  list.querySelector(`[data-sid="${sid}"]`)?.remove();
+  list.querySelectorAll('.set-row').forEach((r,i) => r.querySelector('.set-num').textContent = i+1);
+  updateVolume();
+}
+
+document.getElementById('addExBtn').addEventListener('click', addExercise);
+addExercise(); // default one
+
+// ── VOLUME ──
+function getVolumeData() {
+  const cards = document.querySelectorAll('.exercise-card');
+  let rows = [], grand = 0;
+  cards.forEach(card => {
+    const eid = card.dataset.eid;
+    const name = card.querySelector('.ex-name-input').value.trim() || '이름 없음';
+    let vol = 0;
+    // 각 세트 수집 (타입 포함)
+    const setList = [];
+    card.querySelectorAll('.set-row').forEach(row => {
+      const inp = row.querySelectorAll('.set-input');
+      const kg   = parseFloat(inp[0].value) || 0;
+      const reps = parseFloat(inp[1].value) || 0;
+      const type = row.dataset.type || 'normal';
+      // 예열 세트는 볼륨 합산에서 제외 (실훈련 강도 왜곡 방지)
+      if (type !== 'warmup') vol += kg * reps;
+      if (kg || reps) setList.push({ kg, reps, type });
+    });
+
+    // 같은 kg+횟수+타입 세트 묶기
+    const merged = [];
+    setList.forEach(s => {
+      const existing = merged.find(m => m.kg === s.kg && m.reps === s.reps && m.type === s.type);
+      if (existing) existing.count++;
+      else merged.push({ kg: s.kg, reps: s.reps, type: s.type, count: 1 });
+    });
+
+    // 타입별로 그룹화 (예열 → 본세트 → 드롭 순서 고정)
+    const typeOrder = ['warmup', 'normal', 'drop'];
+    const groups = typeOrder.map(type => ({
+      type,
+      sets: merged.filter(m => m.type === type)
+    })).filter(g => g.sets.length > 0);
+
+    // 기존 형식과 호환되는 한 줄 detail (클립보드/노션 기본용)
+    const typeTag = t => t === 'warmup' ? '(예열) ' : t === 'drop' ? '(드롭) ' : '';
+    const detail = merged.map(m =>
+      m.count > 1
+        ? `${typeTag(m.type)}${m.kg}kg × ${m.reps}회 × ${m.count}세트`
+        : `${typeTag(m.type)}${m.kg}kg × ${m.reps}회`
+    ).join(' / ');
+
+    const rir = exerciseRIR[eid];
+    const rirText = (rir !== undefined) ? `RIR ${rir}${rir === 4 ? '+' : ''}` : '';
+
+    grand += vol;
+    rows.push({ name, vol, detail, groups, rir: rirText });
+  });
+  return { rows, grand };
+}
+
+// 타입별 태그
+const TYPE_TAG = {
+  warmup: '🔷',
+  normal: '🔶',
+  drop:   '🔻'
+};
+
+// 노션/클립보드용 한 줄 압축 텍스트 (원래 쓰던 "kg × 회 × 세트 / ..." 형태 유지)
+function formatGroupedText(groups) {
+  return groups.map(g => {
+    const tag = TYPE_TAG[g.type];
+    const sets = g.sets.map(s =>
+      s.count > 1 ? `${s.kg}kg × ${s.reps}회 × ${s.count}세트` : `${s.kg}kg × ${s.reps}회`
+    ).join(' / ');
+    return tag ? `${tag}${sets}` : sets;
+  }).join(' / ');
+}
+
+// 화면 볼륨 박스용 (같은 한 줄 압축, 타입 태그만 살짝 강조)
+function formatGroupedHTML(groups) {
+  return groups.map(g => {
+    const tag = TYPE_TAG[g.type];
+    const sets = g.sets.map(s =>
+      s.count > 1 ? `${s.kg}kg × ${s.reps}회 × ${s.count}세트` : `${s.kg}kg × ${s.reps}회`
+    ).join(', ');
+    const cls = g.type === 'warmup' ? 'set-tag-warmup' : g.type === 'drop' ? 'set-tag-drop' : '';
+    return tag ? `<span class="${cls}">${tag}</span> ${sets}` : sets;
+  }).join(' <span style="color:var(--muted)">/</span> ');
+}
+
+function updateVolume() {
+  const { rows, grand } = getVolumeData();
+  const box = document.getElementById('volumeBox');
+  if (grand === 0) {
+    box.innerHTML = `<div class="volume-empty">운동을 추가하면 볼륨이 계산돼요</div>`;
+    return;
+  }
+  const items = rows.filter(r => r.vol > 0 || r.detail).map(r => `
+    <div class="volume-row">
+      <div>
+        <div class="volume-ex-name">${r.name}${r.rir ? ` <span style="color:var(--accent);font-size:11px;font-weight:400">· ${r.rir}</span>` : ''}</div>
+        <div class="volume-detail">${formatGroupedHTML(r.groups)}</div>
+      </div>
+      <div class="volume-val">${r.vol.toLocaleString()} <span style="font-size:11px;color:var(--muted2);font-weight:400">kg</span></div>
+    </div>
+  `).join('');
+  box.innerHTML = items + `
+    <div class="volume-total">
+      <div class="volume-total-label">총 볼륨</div>
+      <div class="volume-total-val">${grand.toLocaleString()} <span style="font-size:13px;color:var(--muted2);font-weight:400">kg</span></div>
+    </div>
+  `;
+}
+
+// ── NOTION 설정 ──
+const NOTION_CONFIG = {
+  workerUrl:  'https://exercise-log.lee34344.workers.dev'
+  // 토큰은 Cloudflare Workers 환경 변수에 저장되어 있어서 여기 없어도 돼요
+};
+
+async function saveToNotion(data) {
+  const statusEl = document.getElementById('notionStatus');
+  statusEl.className = 'notion-status saving';
+  statusEl.textContent = '⏳ 노션에 저장 중...';
+
+  try {
+    const res = await fetch(NOTION_CONFIG.workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data
+      })
+    });
+    const json = await res.json();
+    if (json.id) {
+      statusEl.className = 'notion-status success';
+      statusEl.textContent = '✅ 노션에 저장됐어요!';
+    } else {
+      throw new Error(json.message || '저장 실패');
+    }
+  } catch(e) {
+    statusEl.className = 'notion-status error';
+    statusEl.textContent = `❌ 저장 실패: ${e.message}`;
+  }
+}
+
+// ── 운동별 이전 기록 불러오기 ──
+const pastExerciseCache = {};
+
+async function fetchPastExercise(eid, exName) {
+  const recordEl   = document.getElementById(`pastRecord-${eid}`);
+  const contentEl  = document.getElementById(`pastRecordContent-${eid}`);
+  if (!exName || !recordEl) return;
+
+  // 캐시 확인
+  if (pastExerciseCache[exName]) {
+    renderPastExercise(contentEl, recordEl, pastExerciseCache[exName], exName);
+    return;
+  }
+
+  recordEl.classList.add('visible');
+  contentEl.textContent = '불러오는 중...';
+
+  try {
+    const res = await fetch(NOTION_CONFIG.workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action:     'query',
+        filter: {
+          property: '운동 목록',
+          rich_text: { contains: exName }
+        },
+        sorts: [{ property: '날짜', direction: 'descending' }],
+        page_size: 3
+      })
+    });
+    const json = await res.json();
+    pastExerciseCache[exName] = json.results || [];
+    renderPastExercise(contentEl, recordEl, pastExerciseCache[exName], exName);
+  } catch(e) {
+    contentEl.textContent = '불러오기 실패';
+  }
+}
+
+function renderPastExercise(contentEl, recordEl, results, exName) {
+  if (!results.length) {
+    recordEl.classList.remove('visible');
+    return;
+  }
+  recordEl.classList.add('visible');
+
+  // 운동 목록 텍스트에서 해당 운동 줄만 추출
+  contentEl.innerHTML = results.map(page => {
+    const props    = page.properties;
+    const date     = props['날짜']?.date?.start || '';
+    const exText   = props['운동 목록']?.rich_text?.[0]?.text?.content || '';
+    // 해당 운동명이 포함된 줄만 필터
+    const lines = exText.split('\n').filter(l => l.includes(exName));
+    if (!lines.length) return '';
+    return `<div style="margin-bottom:2px"><span style="color:var(--muted);font-size:11px">${date}&nbsp;&nbsp;</span>${lines.join(' / ')}</div>`;
+  }).filter(Boolean).join('');
+
+  if (!contentEl.innerHTML) recordEl.classList.remove('visible');
+}
+async function fetchPastWorkouts(routine) {
+  if (!routine) return;
+  const routineLabel = { push:'PUSH DAY', leg:'LEG DAY', pull:'PULL DAY' }[routine];
+  const compareEl = document.getElementById('compareSection');
+  const contentEl = document.getElementById('compareContent');
+  compareEl.style.display = 'block';
+  contentEl.innerHTML = `<div class="compare-loading">⏳ 이전 기록 불러오는 중...</div>`;
+
+  try {
+    const res = await fetch(NOTION_CONFIG.workerUrl + '?action=query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action:     'query',
+        filter: {
+          property: '루틴',
+          select: { equals: routineLabel }
+        },
+        sorts: [{ property: '날짜', direction: 'descending' }],
+        page_size: 3
+      })
+    });
+    const json = await res.json();
+    const results = json.results || [];
+
+    if (!results.length) {
+      contentEl.innerHTML = `<div class="compare-loading">이전 ${routineLabel} 기록이 없어요</div>`;
+      return;
+    }
+
+    const { grand: currentVol } = getVolumeData();
+
+    contentEl.innerHTML = results.map(page => {
+      const props = page.properties;
+      const date     = props['날짜']?.date?.start || '날짜 없음';
+      const vol      = props['총 볼륨']?.number || 0;
+      const exText   = props['운동 목록']?.rich_text?.[0]?.text?.content || '';
+      const duration = props['운동 시간']?.rich_text?.[0]?.text?.content || '';
+      const diff     = currentVol - vol;
+      const diffStr  = diff > 0 ? `+${diff.toLocaleString()}kg` : `${diff.toLocaleString()}kg`;
+      const diffClass = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
+      const volClass  = diff > 0 ? 'better' : diff < 0 ? 'worse' : '';
+
+      return `
+        <div class="compare-card">
+          <div class="compare-card-header">
+            <div>
+              <div class="compare-card-date">${date} ${duration ? '· ' + duration : ''}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              ${diff !== 0 && currentVol > 0 ? `<span class="compare-diff ${diffClass}">${diffStr}</span>` : ''}
+              <span class="compare-card-vol ${volClass}">${vol.toLocaleString()} kg</span>
+            </div>
+          </div>
+          <div class="compare-ex">${exText.replace(/\n/g,'<br>')}</div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    contentEl.innerHTML = `<div class="compare-loading" style="color:var(--bad)">불러오기 실패</div>`;
+  }
+}
+
+// ── 종료 확인 다이얼로그 ──
+function showConfirm() {
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('visible');
+}
+function confirmEnd() {
+  closeConfirm();
+  endWorkout();
+}
+
+// ── END WORKOUT ──
+function endWorkout() {
+  // stop stopwatch
+  if (swRunning) { clearInterval(swInterval); swRunning = false; }
+  if (restRunning) skipRest();
+
+  const { rows, grand } = getVolumeData();
+  const exerciseCount = document.querySelectorAll('.exercise-card').length;
+  const setCount = document.querySelectorAll('.set-row').length;
+  const memo = document.getElementById('memoInput').value.trim();
+  const workoutTime = swGetFormatted();
+
+  // DATE
+  document.getElementById('popupDate').textContent = todayStr;
+
+  // BADGES
+  const ROUTINE_LABEL = { push:'PUSH DAY', leg:'LEG DAY', pull:'PULL DAY' };
+  const COND_LABEL    = { good:'💪 GOOD', soso:'😐 SOSO', bad:'😮‍💨 BAD' };
+  let badgesHTML = '';
+  if (state.routine) badgesHTML += `<span class="popup-badge ${state.routine}">${ROUTINE_LABEL[state.routine]}</span>`;
+  if (state.cond)    badgesHTML += `<span class="popup-badge ${state.cond}">${COND_LABEL[state.cond]}</span>`;
+  document.getElementById('popupBadges').innerHTML = badgesHTML;
+
+  // STATS
+  document.getElementById('popupStats').innerHTML = `
+    <div class="popup-stat">
+      <div class="popup-stat-label">운동 시간</div>
+      <div class="popup-stat-val" style="font-size:${swElapsed>=3600?'18px':'26px'}">${workoutTime}</div>
+    </div>
+    <div class="popup-stat">
+      <div class="popup-stat-label">총 볼륨</div>
+      <div class="popup-stat-val">${grand.toLocaleString()}</div>
+      <div class="popup-stat-unit">kg</div>
+    </div>
+    <div class="popup-stat">
+      <div class="popup-stat-label">운동 종목</div>
+      <div class="popup-stat-val">${exerciseCount}</div>
+      <div class="popup-stat-unit">종목</div>
+    </div>
+    <div class="popup-stat">
+      <div class="popup-stat-label">총 세트</div>
+      <div class="popup-stat-val">${setCount}</div>
+      <div class="popup-stat-unit">세트</div>
+    </div>
+  `;
+
+  // EXERCISES
+  const exHTML = rows.filter(r => r.vol > 0 || r.detail).map(r => `
+    <div class="popup-ex-item">
+      <span class="popup-ex-name">${r.name}${r.rir ? ` <span style="color:var(--muted2);font-size:11px;font-weight:400">(${r.rir})</span>` : ''}</span>
+      <span class="popup-ex-vol">${r.vol.toLocaleString()} kg</span>
+    </div>
+  `).join('');
+  document.getElementById('popupExercises').innerHTML = `
+    <div class="popup-ex-title">종목별 볼륨</div>
+    ${exHTML || '<div style="font-size:12px;color:var(--muted)">기록 없음</div>'}
+  `;
+
+  // MEMO
+  const memoEl = document.getElementById('popupMemo');
+  if (memo) { memoEl.textContent = `"${memo}"`; memoEl.style.display = 'block'; }
+  else { memoEl.style.display = 'none'; }
+
+  document.getElementById('popupOverlay').classList.add('visible');
+
+  // 노션 저장
+  const { rows: notionRows, grand: notionGrand } = getVolumeData();
+  const notionRoutineLabel = { push:'PUSH DAY', leg:'LEG DAY', pull:'PULL DAY' };
+  const notionCondLabel    = { good:'GOOD', soso:'SOSO', bad:'BAD' };
+  saveToNotion({
+    title:     todayStr,
+    date:      now.toISOString().split('T')[0],
+    routine:   notionRoutineLabel[state.routine] || '미선택',
+    cond:      notionCondLabel[state.cond] || '미선택',
+    duration:  swGetFormatted(),
+    totalVol:  notionGrand,
+    exercises: notionRows.filter(r => r.vol > 0 || r.detail)
+                 .map(r => `${r.name} — ${formatGroupedText(r.groups)} (${r.vol.toLocaleString()}kg)${r.rir ? ` [${r.rir}]` : ''}`)
+                 .join('\n'),
+    memo:      memo
+  });
+
+  // 이전 기록 비교
+  fetchPastWorkouts(state.routine);
+}
+
+// ── AUTOCOMPLETE ──
+const DEFAULT_EXERCISES = [
+  '벤치프레스', '인클라인 벤치프레스', '디클라인 벤치프레스',
+  '덤벨 플라이', '케이블 크로스오버', '딥스',
+  '숄더프레스', '덤벨 숄더프레스', '사이드 레터럴 레이즈', '프론트 레이즈',
+  '트라이셉스 푸시다운', '오버헤드 트라이셉스 익스텐션', '스컬 크러셔',
+  '데드리프트', '바벨 로우', '시티드 로우', '랫 풀다운', '풀업', '친업',
+  '덤벨 로우', '페이스풀', '리어 델트 플라이',
+  '바이셉스 컬', '해머 컬', '인클라인 덤벨 컬', '케이블 컬',
+  '스쿼트', '레그 프레스', '런지', '레그 익스텐션', '레그 컬',
+  '힙 쓰러스트', '루마니안 데드리프트', '카프 레이즈',
+  '플랭크', '크런치', '레그 레이즈', '케이블 우드찹'
+];
+let EXERCISE_LIST = [...DEFAULT_EXERCISES];
+
+// 새로 입력한 운동명 목록에 추가
+function registerExerciseName(name) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  // 공백 제거 + 소문자로 정규화해서 중복 비교
+  const normalized = trimmed.replace(/\s+/g, '').toLowerCase();
+  const isDuplicate = EXERCISE_LIST.some(e => e.replace(/\s+/g, '').toLowerCase() === normalized);
+  if (!isDuplicate) {
+    EXERCISE_LIST.unshift(trimmed);
+  }
+}
+
+function showAutocomplete(input) {
+  const val = input.value.trim();
+  const list = input.closest('.name-wrap').querySelector('.autocomplete-list');
+  if (!val) { list.style.display = 'none'; return; }
+  const normalizedVal = val.replace(/\s+/g, '').toLowerCase();
+  const matches = EXERCISE_LIST.filter(e =>
+    e.replace(/\s+/g, '').toLowerCase().includes(normalizedVal)
+  ).slice(0, 5);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map((m, i) =>
+    `<div class="autocomplete-item" data-idx="${i}" onmousedown="selectAutocomplete(event, '${m}')">${m}</div>`
+  ).join('');
+  list.style.display = 'block';
+}
+
+function hideAutocomplete(input) {
+  const list = input.closest('.name-wrap').querySelector('.autocomplete-list');
+  list.style.display = 'none';
+}
+
+function selectAutocomplete(e, val) {
+  e.preventDefault();
+  const input = e.target.closest('.name-wrap').querySelector('.ex-name-input');
+  const eid = input.closest('.exercise-card').dataset.eid;
+  input.value = val;
+  hideAutocomplete(input);
+  registerExerciseName(val);
+  updateVolume();
+  fetchPastExercise(eid, val);
+}
+
+function handleAutoKey(e, input) {
+  const list = input.closest('.name-wrap').querySelector('.autocomplete-list');
+  const items = list.querySelectorAll('.autocomplete-item');
+  const selected = list.querySelector('.selected');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    const next = selected ? selected.nextElementSibling : items[0];
+    if (selected) selected.classList.remove('selected');
+    if (next) next.classList.add('selected');
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    const prev = selected ? selected.previousElementSibling : null;
+    if (selected) selected.classList.remove('selected');
+    if (prev) prev.classList.add('selected');
+  } else if (e.key === 'Enter' && selected) {
+    e.preventDefault();
+    input.value = selected.textContent;
+    registerExerciseName(selected.textContent);
+    hideAutocomplete(input);
+    updateVolume();
+  } else if (e.key === 'Escape') {
+    hideAutocomplete(input);
+  }
+}
+
+// ── ALARM SOUND (Web Audio API) ──
+let audioCtx = null;
+
+// 사용자 인터랙션 시점에 AudioContext 미리 초기화
+function unlockAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playAlarm() {
+  try {
+    unlockAudio();
+    const ctx = audioCtx;
+    const beep = (freq, start, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+    beep(880,  0,    0.15);
+    beep(880,  0.18, 0.15);
+    beep(1100, 0.36, 0.3);
+  } catch(e) {}
+}
+
+// ── CLIPBOARD COPY ──
+function copyToClipboard() {
+  const { rows, grand } = getVolumeData();
+  const ROUTINE_LABEL = { push:'PUSH DAY', leg:'LEG DAY', pull:'PULL DAY' };
+  const COND_LABEL    = { good:'GOOD 💪', soso:'SOSO 😐', bad:'BAD 😮‍💨' };
+  const memo = document.getElementById('memoInput').value.trim();
+
+  let text = `🏋️ 운동 기록 — ${todayStr}\n`;
+  text += `━━━━━━━━━━━━━━━━━━\n`;
+  if (state.routine) text += `루틴: ${ROUTINE_LABEL[state.routine]}\n`;
+  if (state.cond)    text += `컨디션: ${COND_LABEL[state.cond]}\n`;
+  text += `운동 시간: ${swGetFormatted()}\n`;
+  text += `총 볼륨: ${grand.toLocaleString()} kg\n`;
+  text += `━━━━━━━━━━━━━━━━━━\n`;
+  rows.filter(r => r.vol > 0 || r.detail).forEach(r => {
+    text += `\n• ${r.name}${r.rir ? ` (${r.rir})` : ''}\n  ${formatGroupedText(r.groups)} → ${r.vol.toLocaleString()} kg\n`;
+  });
+  if (memo) text += `\n📝 ${memo}`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ 복사됨';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 복사'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function closePopup() {
+  document.getElementById('popupOverlay').classList.remove('visible');
+}
+</script>
+</body>
+</html>

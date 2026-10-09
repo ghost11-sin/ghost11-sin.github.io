@@ -6,35 +6,86 @@
 <title>도구 모음</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-  :root { --바탕: #000; --글자: #fff; --보조: #a0a0a0; --선: #2e2e2e; }
+  :root {
+    color-scheme: light;
+    --바탕: #ededed;
+    --카드: #ffffff;
+    --칩: #f1f1f1;
+    --글자: #111111;
+    --보조: #7b7b7b;
+    --그림자: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px rgba(0, 0, 0, 0.05);
+  }
   * { box-sizing: border-box; }
   html { background: var(--바탕); }
   body {
     margin: 0;
-    padding: 56px 24px 72px;
+    padding: 64px 24px 80px;
     color: var(--글자);
     font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 640px; margin: 0 auto; }
-  h1 { margin: 0 0 40px; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
-  ul { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--선); }
-  li { border-bottom: 1px solid var(--선); }
-  a { display: block; padding: 20px 0; color: inherit; text-decoration: none; }
-  .이름 { display: block; font-size: 20px; font-weight: 600; }
-  .설명 { display: block; margin-top: 4px; font-size: 15px; color: var(--보조); }
-  a:hover .이름 { text-decoration: underline; text-underline-offset: 5px; }
-  a:focus-visible { outline: 2px solid var(--글자); outline-offset: 4px; }
+  main { max-width: 720px; margin: 0 auto; }
+  header { margin-bottom: 40px; }
+  h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.025em; }
+  .개수 { margin: 6px 0 0; font-size: 15px; color: var(--보조); }
+  section + section { margin-top: 36px; }
+  h2 { margin: 0 0 14px; font-size: 15px; font-weight: 700; }
+  ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  li { display: flex; }
+  a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    background: var(--카드);
+    border-radius: 18px;
+    box-shadow: var(--그림자);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 0.18s, color 0.18s;
+  }
+  .아이콘 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--칩);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    transition: background-color 0.18s;
+  }
+  .이름 { display: block; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .설명 { display: block; margin-top: 4px; font-size: 14px; color: var(--보조); transition: color 0.18s; }
+  a:hover, a:focus-visible { background: var(--글자); color: #fff; }
+  a:hover .아이콘, a:focus-visible .아이콘 { background: #2b2b2b; }
+  a:hover .설명, a:focus-visible .설명 { color: #b8b8b8; }
+  a:focus-visible { outline: 2px solid var(--글자); outline-offset: 3px; }
   .비어있음 { color: var(--보조); }
+  @media (max-width: 560px) {
+    body { padding: 40px 16px 64px; }
+    ul { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    a, .아이콘, .설명 { transition: none; }
+  }
 </style>
 </head>
 <body>
 <main>
+<header>
 <h1>도구 모음</h1>
+<p class="개수">1개의 도구</p>
+</header>
+<section>
 <ul>
-<li><a href="rich_calculator_beige_final.html"><span class="이름">부자 계산기</span></a></li>
+<li><a href="rich_calculator_beige_final.html"><span class="아이콘" aria-hidden="true">부</span><span><span class="이름">부자 계산기</span></span></a></li>
 </ul>
+</section>
 </main>
 </body>
 </html>

@@ -1,0 +1,2152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>부자 계산기</title>
+<meta name="description" content="자산과 월급을 한곳에서 계산하고 배분해요">
+<meta name="icon" content="💰">
+<meta name="category" content="돈">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#F7F3EC;
+    --card:#FFFFFF;
+    --border:#E7DFD0;
+    --text:#2B2620;
+    --sub:#8A7F6D;
+    --accent:#8B6F47;
+    --accent-soft:#EFE7DA;
+    --good:#5C7A5C;
+    --warn:#B98A2E;
+    --bad:#B5533C;
+    --font-heading:'Gowun Batang', serif;
+    --font-number:'Pretendard', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;min-width:0;}
+  html,body{overflow-x:hidden;}
+  body{
+    margin:0;
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    max-width:100vw;
+  }
+  .wrap{max-width:1300px;margin:0 auto;padding:24px 24px 60px;}
+  header h1{font-family:var(--font-heading);font-weight:700;font-size:24px;margin:0 0 2px;}
+  header p{margin:0 0 20px;color:var(--sub);font-size:13px;}
+
+  /* 메인 탭 */
+  .main-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:20px;padding-bottom:0;}
+  .main-tab{
+    font-family:var(--font-heading);
+    padding:10px 16px;font-size:15px;font-weight:700;color:var(--sub);
+    background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;
+  }
+  .main-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .main-tab.disabled{color:#c7cad1;cursor:default;}
+  .main-tab .badge{
+    font-size:10px;font-weight:600;background:#eef0f3;color:#9aa0aa;
+    padding:2px 6px;border-radius:10px;margin-left:4px;
+  }
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* 서브 탭 */
+  .sub-tabs{display:flex;gap:8px;margin-bottom:16px;}
+  .sub-tab{
+    padding:8px 16px;font-size:14px;font-weight:700;border-radius:20px;border:1px solid var(--border);
+    background:var(--card);cursor:pointer;color:var(--sub);
+  }
+  .sub-tab.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:760px){.grid{grid-template-columns:1fr;}}
+  @media (min-width:1100px){.grid{gap:28px;}}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 1px 2px rgba(43,38,32,0.04);}
+  .card + .card{margin-top:16px;}
+
+  label{display:block;font-size:13px;color:var(--sub);margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  .input-row{position:relative;}
+  input[type=number], select{
+    width:100%;padding:10px 46px 10px 12px;border:1px solid var(--border);border-radius:10px;
+    font-size:15px;color:var(--text);background:#fff;
+  }
+  select{padding:10px 12px;}
+  .unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--sub);font-size:13px;}
+
+  .preset-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .preset-btn{
+    padding:6px 12px;font-size:12px;border-radius:20px;border:1px solid var(--border);
+    background:#fff;cursor:pointer;color:var(--sub);
+  }
+  .preset-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+  .btn-primary{
+    width:100%;padding:13px;margin-top:18px;background:var(--accent);color:#fff;border:none;
+    border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;
+  }
+  .btn-primary:hover{opacity:.92;}
+
+  .result-title{font-family:var(--font-heading);font-size:16px;font-weight:700;margin:0 0 2px;}
+  .result-sub{font-size:12px;color:var(--sub);margin:0 0 16px;}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .stat-label{font-size:12px;color:var(--sub);margin-bottom:4px;}
+  .stat-value{font-family:var(--font-number);font-size:18px;font-weight:600;}
+  .stat-value.hero{font-size:23px;color:var(--accent);font-weight:700;}
+
+  .progress{height:8px;border-radius:4px;background:#eef0f3;overflow:hidden;display:flex;margin:6px 0;}
+  .progress > div{height:100%;}
+  .progress-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);}
+
+  .msg{
+    padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.5;margin-top:14px;
+  }
+  .msg.info{background:#EFEAE0;color:var(--sub);}
+  .msg.warn{background:#F6ECD9;color:var(--warn);}
+  .msg.bad{background:#F5E4DF;color:var(--bad);}
+  .msg.good{background:#E8EEE3;color:var(--good);}
+
+  canvas{max-width:100%;}
+
+  .placeholder{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:60px 20px;color:var(--sub);text-align:center;border:1px dashed var(--border);border-radius:16px;background:var(--card);
+  }
+  .placeholder h3{margin:8px 0 4px;color:var(--text);}
+
+  .save-indicator{font-size:12px;color:var(--good);margin-top:10px;opacity:0;transition:opacity .3s;}
+  .save-indicator.show{opacity:1;}
+
+  .accordion-toggle{
+    width:100%;margin-top:14px;padding:10px;border:1px solid var(--border);border-radius:12px;
+    background:#F2ECE0;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .accordion-content{
+    margin-top:10px;padding:16px;border-radius:12px;background:#F2ECE0;font-size:13px;line-height:1.7;color:var(--text);
+  }
+  .accordion-content .step{margin-bottom:12px;}
+  .accordion-content .step:last-child{margin-bottom:0;}
+  .accordion-content .step-title{font-weight:700;margin-bottom:2px;}
+  .accordion-content .step-formula{
+    display:inline-block;margin-top:4px;padding:6px 10px;border-radius:8px;background:#fff;border:1px solid var(--border);font-weight:600;
+  }
+
+  .liab-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  .add-row{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+  .add-row input[type=text]{
+    flex:1 1 160px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;
+  }
+  .add-row input[type=number]{
+    flex:0 1 110px;width:110px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;
+  }
+  .unit-inline{color:var(--sub);font-size:13px;}
+  .add-btn{
+    padding:10px 14px;border:none;border-radius:10px;background:var(--accent);color:#fff;
+    font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;
+  }
+  .add-btn:hover{opacity:.9;}
+
+  .item-list{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .item-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 12px;border:1px solid var(--border);border-radius:12px;background:#FBF8F2;
+  }
+  .item-row .item-color{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
+  .item-row .item-name{flex:1;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;}
+  .item-row .item-amount{font-family:var(--font-number);font-size:13px;font-weight:600;color:var(--text);}
+  .item-row .item-remove{
+    border:none;background:none;color:var(--sub);cursor:pointer;font-size:15px;padding:0 2px;line-height:1;
+  }
+  .item-row .item-remove:hover{color:var(--bad);}
+  .item-empty{font-size:12px;color:var(--sub);padding:8px 2px;}
+
+  .chart-wrap{position:relative;height:220px;margin-top:16px;}
+  .chart-wrap canvas{width:100% !important;height:100% !important;}
+
+  .header-actions{display:flex;gap:8px;margin-bottom:16px;}
+  .header-btn{
+    padding:8px 12px;font-size:13px;font-weight:700;border-radius:10px;border:1px solid var(--border);
+    background:#fff;color:var(--sub);cursor:pointer;
+  }
+  .header-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  .snapshot-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .snapshot-btn{
+    padding:8px 14px;font-size:13px;font-weight:700;border-radius:10px;border:1px solid var(--accent);
+    background:var(--accent-soft);color:var(--accent);cursor:pointer;
+  }
+  .snapshot-controls{display:flex;gap:8px;align-items:center;flex:0 0 auto;}
+  .month-input{
+    padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text);background:#fff;
+  }
+
+  .view-toggle{
+    margin-top:10px;border:none;background:none;color:var(--accent);font-size:12px;font-weight:600;
+    cursor:pointer;padding:0;
+  }
+  .view-toggle:hover{text-decoration:underline;}
+
+  @media (max-width:480px){
+    .wrap{padding:16px 10px 40px;}
+    header h1{font-size:18px;}
+    .main-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .main-tab{padding:8px 10px;font-size:13px;white-space:nowrap;}
+    .sub-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .sub-tab{white-space:nowrap;}
+    .stat-value{font-size:16px;}
+    .stat-value.hero{font-size:19px;}
+    .card{padding:16px;}
+    .add-row{flex-direction:column;align-items:stretch;}
+    .add-row input[type=text], .add-row input[type=number]{width:100%;flex:none;}
+    .add-btn{width:100%;}
+    .header-actions{flex-direction:column;}
+    .header-btn{width:100%;}
+  }
+
+  /* ── 월급 배분기 전용 (카테고리 구조) ── */
+  .sal-ratio-bar{display:flex;height:10px;border-radius:6px;overflow:hidden;gap:2px;margin:14px 0 12px;background:#EFE9DC;}
+  .sal-ratio-seg{height:100%;border-radius:3px;transition:flex 0.35s cubic-bezier(.4,0,.2,1);min-width:0;}
+  .sal-ratio-legend{display:flex;flex-direction:column;gap:6px;}
+  .sal-leg-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:10px;background:#FBF8F2;border:1px solid var(--border);}
+  .sal-leg-left{display:flex;align-items:center;gap:8px;}
+  .sal-leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .sal-leg-name{font-size:13px;color:var(--text);}
+  .sal-leg-pct{font-size:11px;color:var(--sub);margin-left:2px;}
+  .sal-leg-amt{font-family:var(--font-number);font-size:13px;font-weight:600;color:var(--text);}
+
+  .sal-reserve-card{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .sal-reserve-hint{font-size:12px;color:var(--sub);}
+  .sal-reserve-amt{font-family:var(--font-number);font-size:24px;font-weight:700;color:var(--text);}
+  .sal-reserve-amt.over{color:var(--bad);}
+  .sal-reserve-amt.zero{color:var(--sub);}
+  .sal-reserve-amt.pos{color:var(--good);}
+
+  /* 카테고리 항목 */
+  .cat-item{border-bottom:1px solid var(--border);}
+  .cat-item:first-child{border-top:1px solid var(--border);}
+  .cat-header{display:flex;align-items:center;gap:10px;padding:12px 2px;cursor:pointer;user-select:none;}
+  .cat-header:hover .cat-del{opacity:1;}
+  .cat-chevron{font-size:10px;color:var(--sub);flex-shrink:0;transition:transform 0.2s;line-height:1;}
+  .cat-chevron.open{transform:rotate(90deg);}
+  .cat-color-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .cat-name-inp{
+    flex:1;background:none;border:none;outline:none;
+    font-family:var(--font-heading);font-size:15px;font-weight:700;
+    color:var(--text);cursor:text;min-width:0;
+  }
+  .cat-name-inp::placeholder{color:#C7BCA4;}
+  .cat-total{font-family:var(--font-number);font-size:14px;font-weight:700;color:var(--accent);flex-shrink:0;}
+  .cat-pct{font-size:11px;color:var(--sub);flex-shrink:0;min-width:32px;text-align:right;}
+  .cat-add-item-btn{
+    background:none;border:1px solid var(--border);border-radius:8px;color:var(--sub);
+    font-size:13px;width:22px;height:22px;line-height:1;cursor:pointer;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;transition:all 0.15s;
+  }
+  .cat-add-item-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .cat-del{background:none;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;transition:color 0.15s;opacity:0;}
+  .cat-del:hover{color:var(--bad);}
+
+  .sub-items{display:none;padding:2px 0 10px;}
+  .sub-items.open{display:block;}
+  .sub-item{display:flex;align-items:center;gap:8px;padding:7px 4px 7px 26px;border-top:1px dashed var(--border);}
+  .sub-name-inp{
+    flex:1;background:none;border:none;outline:none;
+    font-family:'Pretendard',sans-serif;font-size:13px;color:var(--text);min-width:0;
+  }
+  .sub-name-inp::placeholder{color:#C7BCA4;}
+  .sub-divider{width:1px;height:14px;background:var(--border);flex-shrink:0;}
+  .sub-amt-inp{
+    width:100px;flex-shrink:0;background:none;border:none;outline:none;
+    font-family:var(--font-number);font-size:13px;font-weight:600;color:var(--text);
+    text-align:right;padding:2px 4px;
+  }
+  .sub-amt-inp::placeholder{color:#C7BCA4;}
+  .sub-unit-lbl{font-size:12px;color:var(--sub);flex-shrink:0;}
+  .sub-del{background:none;border:none;color:transparent;font-size:14px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color 0.15s;}
+  .sub-item:hover .sub-del{color:#C7BCA4;}
+  .sub-del:hover{color:var(--bad)!important;}
+
+  .sub-add-row{display:none;align-items:center;gap:8px;padding:8px 8px 8px 26px;margin-top:4px;background:#FBF8F2;border-radius:10px;border:1px solid var(--border);}
+  .sub-add-row.open{display:flex;}
+  .sub-add-name{flex:1;background:none;border:none;outline:none;font-family:'Pretendard',sans-serif;font-size:12px;color:var(--text);min-width:0;}
+  .sub-add-name::placeholder{color:#C7BCA4;}
+  .sub-add-amt{width:90px;flex-shrink:0;background:none;border:none;border-bottom:1px solid var(--border);outline:none;font-family:var(--font-number);font-size:12px;color:var(--text);text-align:right;padding:2px 4px;}
+  .sub-add-amt::placeholder{color:#C7BCA4;}
+  .sub-add-unit{font-size:11px;color:var(--sub);flex-shrink:0;}
+  .sub-add-btn{
+    font-size:11px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:8px;
+    padding:5px 10px;cursor:pointer;flex-shrink:0;transition:opacity 0.15s;
+  }
+  .sub-add-btn:hover{opacity:0.85;}
+
+  /* 모바일: 하위 항목/추가행 - 이름과 금액을 세로로 배치해 카드 밖으로 안 나가도록 */
+  @media (max-width:600px){
+    .card{padding:14px;}
+    .sub-item{flex-wrap:wrap;row-gap:6px;padding:9px 4px 9px 16px;width:100%;}
+    .sub-name-inp{flex:1 1 100% !important;order:1;width:100% !important;}
+    .sub-divider{display:none;}
+    .sub-amt-inp{flex:0 1 auto !important;order:2;width:80px !important;max-width:80px;text-align:left;border-bottom:1px solid var(--border);}
+    .sub-unit-lbl{order:3;}
+    .sub-del{order:4;margin-left:auto;color:#C7BCA4;}
+
+    .sub-add-row{flex-wrap:wrap;row-gap:8px;padding:10px;width:100%;}
+    .sub-add-name{flex:1 1 100% !important;order:1;width:100% !important;}
+    .sub-add-row .sub-divider{display:none;}
+    .sub-add-amt{flex:0 1 auto !important;order:2;width:80px !important;max-width:80px;}
+    .sub-add-unit{order:3;}
+    .sub-add-btn{order:4;margin-left:auto;}
+
+    .cat-header{flex-wrap:wrap;}
+    .cat-name-inp{flex:1 1 100px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>부자 계산기</h1>
+    <p>자산 축적부터 FIRE, 포트폴리오, 월급 배분까지 한 곳에서 관리하세요.</p>
+    <div id="sync-status" style="font-size:12px;color:var(--sub);margin-top:-12px;margin-bottom:16px;"></div>
+  </header>
+
+  <div class="main-tabs">
+    <button class="main-tab active" data-main="salary">💰 월급 배분기</button>
+    <button class="main-tab" data-main="portfolio">🥧 포트폴리오 분해</button>
+    <button class="main-tab" data-main="accum">📊 자산 축적 시뮬레이터</button>
+    <button class="main-tab" data-main="fire">🏝 FIRE 계산기</button>
+  </div>
+
+  <!-- ================= 3. 자산 축적 시뮬레이터 ================= -->
+  <section class="panel" id="panel-accum" style="display:none;">
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="future">📈 미래 자산</button>
+      <button class="sub-tab" data-sub="period">⏱ 목표 달성 기간</button>
+      <button class="sub-tab" data-sub="monthly">🌱 월 적립금</button>
+    </div>
+
+    <!-- 1-1. 미래 자산 -->
+    <div class="sub-panel active" id="sub-future">
+      <div class="grid">
+        <div class="card">
+          <label>현재 자산</label>
+          <div class="input-row"><input type="number" id="f-present" value="0"><span class="unit">만원</span></div>
+
+          <label>월 적립금</label>
+          <div class="input-row"><input type="number" id="f-monthly" value="30"><span class="unit">만원</span></div>
+
+          <label>투자 기간</label>
+          <div class="input-row"><input type="number" id="f-years" value="22"><span class="unit">년</span></div>
+
+          <label>연 수익률</label>
+          <div class="input-row"><input type="number" id="f-rate" value="10" step="0.1"><span class="unit">%</span></div>
+
+          <button class="btn-primary" onclick="calcFuture()">계산하기 →</button>
+        </div>
+
+        <div class="card">
+          <p class="result-title">투자 결과</p>
+          <p class="result-sub">복리의 힘으로 자산이 어떻게 쌓이는지 확인해 보세요.</p>
+          <div class="stat-grid">
+            <div><div class="stat-label">총투자결과</div><div class="stat-value hero" id="f-total">-</div></div>
+            <div><div class="stat-label">총투자금액</div><div class="stat-value" id="f-principal">-</div></div>
+            <div><div class="stat-label">총수익률</div><div class="stat-value" id="f-return-rate">-</div></div>
+            <div><div class="stat-label">총이자수익</div><div class="stat-value" id="f-interest">-</div></div>
+          </div>
+          <div class="progress-labels"><span id="f-principal-pct">납입금 -</span><span id="f-profit-pct">수익금 -</span></div>
+          <div class="progress"><div id="f-bar-principal" style="background:#A69C8A;width:0%"></div><div id="f-bar-profit" style="background:var(--good);width:0%"></div></div>
+          <div class="chart-wrap"><canvas id="f-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1-2. 목표 달성 기간 -->
+    <div class="sub-panel" id="sub-period" style="display:none;">
+      <div class="grid">
+        <div class="card">
+          <label>현재 자산</label>
+          <div class="input-row"><input type="number" id="p-present" value="0"><span class="unit">만원</span></div>
+
+          <label>월 적립금</label>
+          <div class="input-row"><input type="number" id="p-monthly" value="50"><span class="unit">만원</span></div>
+
+          <label>목표 금액</label>
+          <div class="input-row"><input type="number" id="p-target" value="10000"><span class="unit">만원</span></div>
+
+          <label>연 수익률</label>
+          <div class="input-row"><input type="number" id="p-rate" value="7" step="0.1"><span class="unit">%</span></div>
+
+          <button class="btn-primary" onclick="calcPeriod()">계산하기 →</button>
+        </div>
+
+        <div class="card">
+          <p class="result-title">투자 결과</p>
+          <p class="result-sub">목표 금액까지 자산이 어떻게 쌓이는지 확인해 보세요.</p>
+          <div class="stat-grid">
+            <div><div class="stat-label">목표 달성 기간</div><div class="stat-value hero" id="p-period">-</div></div>
+            <div><div class="stat-label">달성 시 자산</div><div class="stat-value" id="p-final-asset">-</div></div>
+            <div><div class="stat-label">총수익률</div><div class="stat-value" id="p-return-rate">-</div></div>
+            <div><div class="stat-label">총이자수익</div><div class="stat-value" id="p-interest">-</div></div>
+          </div>
+          <div class="progress-labels"><span id="p-principal-pct">납입금 -</span><span id="p-profit-pct">수익금 -</span></div>
+          <div class="progress"><div id="p-bar-principal" style="background:#A69C8A;width:0%"></div><div id="p-bar-profit" style="background:var(--good);width:0%"></div></div>
+          <div id="p-message"></div>
+          <div class="chart-wrap"><canvas id="p-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1-3. 월 적립금 -->
+    <div class="sub-panel" id="sub-monthly" style="display:none;">
+      <div class="grid">
+        <div class="card">
+          <label>현재 자산</label>
+          <div class="input-row"><input type="number" id="m-present" value="0"><span class="unit">만원</span></div>
+
+          <label>투자 기간</label>
+          <div class="input-row"><input type="number" id="m-years" value="10"><span class="unit">년</span></div>
+
+          <label>목표 금액</label>
+          <div class="input-row"><input type="number" id="m-target" value="10000"><span class="unit">만원</span></div>
+
+          <label>연 수익률</label>
+          <div class="input-row"><input type="number" id="m-rate" value="7" step="0.1"><span class="unit">%</span></div>
+
+          <button class="btn-primary" onclick="calcMonthly()">계산하기 →</button>
+        </div>
+
+        <div class="card">
+          <p class="result-title">투자 결과</p>
+          <p class="result-sub">필요한 월 적립금과 자산이 쌓이는 과정을 확인해 보세요.</p>
+          <div class="stat-grid">
+            <div><div class="stat-label">필요 월 적립금</div><div class="stat-value hero" id="m-result">-</div></div>
+            <div><div class="stat-label">목표 자산</div><div class="stat-value" id="m-target-asset">-</div></div>
+            <div><div class="stat-label">총 납입 예상</div><div class="stat-value" id="m-total-contrib">-</div></div>
+            <div><div class="stat-label">총이자수익</div><div class="stat-value" id="m-interest">-</div></div>
+          </div>
+          <div class="progress-labels"><span id="m-principal-pct">납입금 -</span><span id="m-profit-pct">수익금 -</span></div>
+          <div class="progress"><div id="m-bar-principal" style="background:#A69C8A;width:0%"></div><div id="m-bar-profit" style="background:var(--good);width:0%"></div></div>
+          <div id="m-message"></div>
+          <div class="chart-wrap"><canvas id="m-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4. FIRE 계산기 ================= -->
+  <section class="panel" id="panel-fire" style="display:none;">
+    <div class="grid">
+      <div class="card">
+        <label>현재 나이</label>
+        <div class="input-row"><input type="number" id="fire-age" value="30"><span class="unit">세</span></div>
+
+        <label>현재 자산</label>
+        <div class="input-row"><input type="number" id="fire-present" value="3000"><span class="unit">만원</span></div>
+
+        <label>월 저축/투자 가능 금액</label>
+        <div class="input-row"><input type="number" id="fire-monthly" value="150"><span class="unit">만원</span></div>
+
+        <label>연 수익률 (은퇴 전후 동일 적용)</label>
+        <div class="input-row"><input type="number" id="fire-rate" value="6" step="0.1"><span class="unit">%</span></div>
+
+        <label>은퇴 후 연간 예상 지출액</label>
+        <div class="input-row"><input type="number" id="fire-expense" value="3000"><span class="unit">만원/년</span></div>
+
+        <label>인출률</label>
+        <div class="preset-row" id="fire-withdraw-presets">
+          <button class="preset-btn" data-val="3">3%</button>
+          <button class="preset-btn" data-val="3.5">3.5%</button>
+          <button class="preset-btn active" data-val="4">4%</button>
+          <button class="preset-btn" data-val="4.5">4.5%</button>
+        </div>
+        <div class="input-row" style="margin-top:8px;"><input type="number" id="fire-withdraw" value="4" step="0.1"><span class="unit">%</span></div>
+
+        <button class="btn-primary" onclick="calcFire()">계산하기 →</button>
+      </div>
+
+      <div class="card">
+        <p class="result-title">경제적 자유(FIRE) 결과</p>
+        <p class="result-sub">인출률 기준 목표 자산과 예상 은퇴 시점, 은퇴 후 자산 소진 여부예요.</p>
+        <div class="stat-grid">
+          <div><div class="stat-label">FIRE 목표 자산</div><div class="stat-value hero" id="fire-target">-</div></div>
+          <div><div class="stat-label">예상 은퇴 나이</div><div class="stat-value" id="fire-retire-age">-</div></div>
+        </div>
+        <div id="fire-message"></div>
+
+        <button class="accordion-toggle" id="fire-accordion-btn" onclick="toggleFireAccordion()">▲ 어떻게 계산되나요?</button>
+        <div class="accordion-content" id="fire-accordion-content" style="display:none;"></div>
+
+        <div class="chart-wrap"><canvas id="fire-chart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2. 포트폴리오 분해 ================= -->
+  <section class="panel" id="panel-portfolio" style="display:none;">
+    <div class="grid">
+      <div class="card">
+        <p class="result-title">자산 목록</p>
+        <p class="result-sub">항목 이름과 금액을 입력하고 추가해보세요. 자유롭게 구성할 수 있어요.</p>
+
+        <div class="add-row">
+          <input type="text" id="pf-asset-name-input" placeholder="자산 이름 (예: 예금, 삼성전자 주식)">
+          <input type="number" id="pf-asset-amount-input" placeholder="금액">
+          <span class="unit-inline">만원</span>
+          <button class="add-btn" onclick="addAsset()">+ 추가</button>
+        </div>
+        <div class="item-list" id="pf-asset-list"></div>
+
+        <p class="result-title" style="margin-top:24px;">부채 목록</p>
+        <p class="result-sub">할부, 대출 등 부채 항목도 자유롭게 추가하세요.</p>
+
+        <div class="add-row">
+          <input type="text" id="pf-debt-name-input" placeholder="부채 이름 (예: 자동차 할부, 전세대출)">
+          <input type="number" id="pf-debt-amount-input" placeholder="금액">
+          <span class="unit-inline">만원</span>
+          <button class="add-btn" onclick="addDebt()">+ 추가</button>
+        </div>
+        <div class="item-list" id="pf-debt-list"></div>
+
+        <div class="save-indicator" id="pf-save-indicator">✓ 자동 저장됨</div>
+      </div>
+
+      <div class="card">
+        <p class="result-title">내 자산 현황</p>
+        <p class="result-sub">항목을 추가·삭제할 때마다 실시간으로 갱신돼요.</p>
+        <div class="stat-grid">
+          <div><div class="stat-label">총자산</div><div class="stat-value" id="pf-total-asset">-</div></div>
+          <div><div class="stat-label">총부채</div><div class="stat-value" id="pf-total-debt">-</div></div>
+        </div>
+        <div class="stat-label">순자산</div>
+        <div class="stat-value hero" id="pf-net-asset">-</div>
+        <div class="chart-wrap"><canvas id="pf-chart"></canvas></div>
+      </div>
+
+      <div class="card" style="grid-column:1 / -1;">
+        <div class="snapshot-row">
+          <div>
+            <p class="result-title" style="margin:0;">순자산 변화 추이</p>
+            <p class="result-sub" style="margin:2px 0 0;" id="pf-history-sub">이번 달 스냅샷을 저장하면 시간에 따른 변화를 볼 수 있어요.</p>
+          </div>
+          <div class="snapshot-controls">
+            <input type="month" id="pf-snapshot-month" class="month-input">
+            <button class="snapshot-btn" onclick="savePortfolioSnapshot()">📸 저장</button>
+          </div>
+        </div>
+        <button class="view-toggle" id="pf-history-toggle" style="display:none;" onclick="togglePortfolioHistoryView()"></button>
+        <div class="chart-wrap"><canvas id="pf-history-chart"></canvas></div>
+        <div class="item-list" id="pf-history-list"></div>
+      </div>
+
+      <div class="card" id="invest-history-wrap" style="grid-column:1 / -1;">
+        <p class="result-title" style="margin-bottom:2px;">저축 · 투자 축적 추이</p>
+        <p class="result-sub">월급 배분기에서 "→ 포트폴리오 자산에 반영"을 누를 때마다 그 시점의 저축·투자 구성이 여기 기록돼요.</p>
+        <div class="chart-wrap"><canvas id="invest-history-chart"></canvas></div>
+        <p class="result-sub" style="margin:14px 0 6px;" id="invest-history-empty">아직 반영된 기록이 없어요. 월급 배분기에서 반영해보세요.</p>
+        <p class="result-sub" style="margin:14px 0 6px;">최근 반영된 구성 (하위 항목별)</p>
+        <div class="item-list" id="invest-history-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 1. 월급 배분기 ================= -->
+  <section class="panel active" id="panel-salary">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;">
+      <p class="result-sub" style="margin:0;">이번 달 들어온 돈을 용도별로 배분하세요.</p>
+      <button class="header-btn" onclick="openCatManager()" style="flex-shrink:0;">⚙ 카테고리 관리</button>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div>
+        <div class="card">
+          <label>이번 달 실수령액</label>
+          <div class="input-row"><input type="number" id="sal-income" value="0" step="0.01"><span class="unit">만원</span></div>
+          <div class="save-indicator" id="sal-save-indicator">✓ 자동 저장됨</div>
+        </div>
+
+        <div class="card">
+          <p class="result-title" style="margin-bottom:2px;">배분 내역</p>
+          <p class="result-sub">카테고리를 펼쳐 항목과 금액을 추가하세요.</p>
+          <div id="sal-cat-list"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div>
+        <div class="card">
+          <p class="result-title">배분 비율</p>
+          <div class="sal-ratio-bar" id="sal-ratio-bar"></div>
+          <div class="sal-ratio-legend" id="sal-ratio-legend"></div>
+        </div>
+
+        <div class="card sal-reserve-card">
+          <div>
+            <div class="stat-label" style="margin-bottom:2px;">비상금</div>
+            <div class="sal-reserve-hint" id="sal-reserve-hint">—</div>
+          </div>
+          <div class="sal-reserve-amt" id="sal-reserve-amt">—</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+            <p class="result-title" style="margin:0;">비상금 누적 현황</p>
+            <button class="header-btn" onclick="openReserveLogModal()" style="font-size:12px;padding:6px 10px;">기록 관리</button>
+          </div>
+          <p class="result-sub">이번 달 비상금을 실제로 모았다면 아래에서 누적액에 더해보세요.</p>
+          <div class="stat-grid">
+            <div><div class="stat-label">누적 비상금</div><div class="stat-value hero" id="reserve-cum-total">—</div></div>
+            <div><div class="stat-label">이번 달 계산된 비상금</div><div class="stat-value" id="reserve-this-month">—</div></div>
+          </div>
+          <button class="add-btn" style="width:100%;margin-top:10px;justify-content:center;" onclick="addThisMonthToReserve()">+ 이번 달 비상금을 누적액에 더하기</button>
+          <div id="reserve-add-msg"></div>
+        </div>
+
+        <div class="card">
+          <p class="result-title" style="margin-bottom:2px;">요약</p>
+          <div class="stat-grid">
+            <div><div class="stat-label">배분 합계</div><div class="stat-value" id="sal-total-amt">—</div></div>
+            <div><div class="stat-label">배분 비율</div><div class="stat-value" id="sal-total-pct">—</div></div>
+            <div><div class="stat-label">카테고리 수</div><div class="stat-value" id="sal-cat-count">—</div></div>
+            <div><div class="stat-label">연간 환산</div><div class="stat-value" id="sal-annual">—</div></div>
+          </div>
+          <button class="header-btn" style="width:100%;margin-top:12px;" onclick="pushSalaryToPortfolio()">→ 이번 달 저축·투자를 포트폴리오에 누적으로 더하기</button>
+          <p class="result-sub" style="margin-top:6px;">누를 때마다 이번 달 금액이 기존 잔고에 더해져요. 한 달에 한 번만 눌러주세요.</p>
+          <div id="push-portfolio-msg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 비상금 누적 기록 관리 모달 -->
+  <div id="reserve-log-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(43,38,32,0.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:460px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(43,38,32,0.15);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <p class="result-title" style="margin:0;">비상금 누적 기록</p>
+        <button onclick="closeReserveLogModal()" style="background:none;border:none;color:var(--sub);font-size:20px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <p class="result-sub" style="margin-bottom:14px;">직접 금액을 더하거나 뺄 수 있어요. 각 기록은 삭제할 수 있어요.</p>
+      <div class="add-row">
+        <input type="text" id="reserve-log-name-input" placeholder="메모 (예: 3월 비상금, 병원비 사용)">
+        <select id="reserve-log-type-input" style="flex:0 0 70px;padding:10px 8px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:#fff;">
+          <option value="add">입금</option>
+          <option value="sub">출금</option>
+        </select>
+        <input type="number" id="reserve-log-amount-input" placeholder="금액" step="0.01">
+        <span class="unit-inline">만원</span>
+        <button class="add-btn" onclick="addReserveLog()">+ 추가</button>
+      </div>
+      <div class="item-list" id="reserve-log-list" style="margin-top:12px;"></div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div><div class="stat-label">누적 비상금</div><div class="stat-value hero" id="reserve-log-total">—</div></div>
+        <button class="btn-primary" style="width:auto;margin-top:0;padding:10px 26px;" onclick="closeReserveLogModal()">완료</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 카테고리 관리 모달 -->
+  <div id="cat-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(43,38,32,0.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:460px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(43,38,32,0.15);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <p class="result-title" style="margin:0;">카테고리 관리</p>
+        <button onclick="closeCatManager()" style="background:none;border:none;color:var(--sub);font-size:20px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <p class="result-sub" style="margin-bottom:14px;">이름 수정 · ↑↓ 순서 변경 · × 삭제</p>
+      <div id="cat-manager-list"></div>
+      <div class="add-row" style="margin-top:14px;">
+        <input type="text" id="cat-manager-new-name" placeholder="새 카테고리 이름">
+        <button class="add-btn" onclick="addCatFromManager()">+ 추가</button>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+        <button class="btn-primary" style="width:auto;margin-top:0;padding:10px 26px;" onclick="closeCatManager()">완료</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   노션 동기화 레이어
+   ============================================================
+   기존 코드는 그대로 localStorage.getItem / setItem을 사용합니다.
+   이 레이어는 setItem이 호출될 때마다 실제 localStorage에도 쓰고,
+   동시에 "이 앱이 쓰는 모든 localStorage 키의 현재 값"을 모아서
+   Cloudflare Worker를 거쳐 노션 데이터베이스에 통째로 저장합니다.
+   (매 타이핑마다 요청을 보내면 느려지니, 입력이 잠시 멈췄을 때
+    한 번만 저장하는 "디바운스" 방식을 씁니다.)
+   ============================================================ */
+
+// ⚠️ 1단계에서 만든 Cloudflare Worker 주소로 바꿔주세요
+const NOTION_WORKER_URL = "https://budget-notion-proxy.lee34344.workers.dev";
+
+// 접속 비밀번호: 코드에는 적지 않고, 처음 한 번 입력받아 이 기기의 브라우저에만 저장해요.
+// 틀리면 지우고 다시 물어봐요.
+const ACCESS_KEY_STORAGE = 'richcalc_access_key';
+async function workerFetch(path, options, retried){
+  let key = localStorage.getItem(ACCESS_KEY_STORAGE);
+  if(!key){
+    key = window.prompt('접속 비밀번호를 입력해 주세요. (이 기기에 저장돼요)') || '';
+    if(key) localStorage.setItem(ACCESS_KEY_STORAGE, key);
+  }
+  const opts = options || {};
+  const res = await fetch(NOTION_WORKER_URL + path, {
+    ...opts,
+    // 한글 같은 글자도 보낼 수 있게 인코딩해서 보내요 (워커가 되돌려 읽어요)
+    headers: { ...(opts.headers || {}), 'X-Access-Key': encodeURIComponent(key) },
+  });
+  if(res.status === 401 && !retried){
+    localStorage.removeItem(ACCESS_KEY_STORAGE);
+    return workerFetch(path, options, true);
+  }
+  return res;
+}
+
+// 이 앱이 사용하는 모든 localStorage 키 목록
+// (기능이 추가되면 여기에도 추가해야 노션에 함께 저장됩니다)
+const SYNCED_STORAGE_KEYS = [
+  'richcalc_calc_inputs_v1',
+  'richcalc_portfolio_v2',
+  'richcalc_portfolio_history',
+  'richcalc_salary_v2',
+  'richcalc_reserve_log_v1',
+  'richcalc_last_push_month',
+  'richcalc_invest_history_v1',
+];
+
+let notionSyncTimer = null;
+let notionSyncInFlight = false;
+let notionSyncQueued = false;
+
+function setSyncStatus(text, color){
+  const el = document.getElementById('sync-status');
+  if(el){ el.textContent = text; el.style.color = color || 'var(--sub)'; }
+}
+
+// localStorage에 있는 모든 동기화 대상 키를 모아 하나의 객체로 만든다
+function collectAllLocalData(){
+  const bundle = {};
+  SYNCED_STORAGE_KEYS.forEach(key=>{
+    const val = localStorage.getItem(key);
+    if(val !== null) bundle[key] = val; // 문자열 그대로 보관 (이미 JSON.stringify된 상태)
+  });
+  return bundle;
+}
+
+// 노션에서 받아온 번들을 실제 localStorage에 채워넣는다
+function applyBundleToLocalStorage(bundle){
+  if(!bundle) return;
+  SYNCED_STORAGE_KEYS.forEach(key=>{
+    if(bundle[key] !== undefined){
+      localStorage.setItem(key, bundle[key]);
+    }
+  });
+}
+
+// 실제로 노션에 저장을 요청하는 함수 (디바운스 타이머가 호출)
+async function flushToNotion(){
+  if(notionSyncInFlight){
+    notionSyncQueued = true; // 지금 요청이 진행 중이면, 끝난 뒤 한 번 더 실행되도록 예약
+    return;
+  }
+  notionSyncInFlight = true;
+  setSyncStatus('☁️ 노션에 저장 중...', '#B98A2E');
+  try{
+    const bundle = collectAllLocalData();
+    const res = await workerFetch('/save', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(bundle),
+    });
+    const data = await res.json();
+    if(data.ok){
+      setSyncStatus('✓ 노션에 저장됨 · ' + new Date().toLocaleTimeString('ko-KR'), '#5C7A5C');
+    } else {
+      setSyncStatus('⚠ 저장 실패: ' + (data.error||'알 수 없는 오류'), '#B5533C');
+    }
+  }catch(err){
+    setSyncStatus('⚠ 저장 실패 (네트워크): ' + err.message, '#B5533C');
+  }finally{
+    notionSyncInFlight = false;
+    if(notionSyncQueued){
+      notionSyncQueued = false;
+      flushToNotion();
+    }
+  }
+}
+
+// 저장 요청을 예약 (입력이 잠시 멈추면 1.2초 후 실제 저장 실행)
+function scheduleNotionSync(){
+  setSyncStatus('입력 중…', 'var(--sub)');
+  clearTimeout(notionSyncTimer);
+  notionSyncTimer = setTimeout(flushToNotion, 1200);
+}
+
+// 페이지 로드 시 노션에서 데이터를 받아와 로컬에 채워넣는다
+async function loadFromNotion(){
+  setSyncStatus('☁️ 노션에서 불러오는 중...', 'var(--sub)');
+  try{
+    const res = await workerFetch('/load');
+    const data = await res.json();
+    if(data.ok && data.data){
+      applyBundleToLocalStorage(data.data);
+      setSyncStatus('✓ 노션에서 불러왔어요', '#5C7A5C');
+    } else if(data.ok && !data.data){
+      setSyncStatus('아직 노션에 저장된 데이터가 없어요 (처음 사용)', 'var(--sub)');
+    } else {
+      setSyncStatus('⚠ 불러오기 실패: ' + (data.error||'알 수 없는 오류'), '#B5533C');
+    }
+  }catch(err){
+    setSyncStatus('⚠ 노션 연결 실패 — 이 기기에 저장된 값으로 계속 진행해요', '#B5533C');
+  }
+}
+
+// localStorage.setItem을 감싸서, 이 앱이 값을 쓸 때마다 자동으로 동기화 예약이 걸리게 한다
+const _originalSetItem = Storage.prototype.setItem.bind(localStorage);
+localStorage.setItem = function(key, value){
+  _originalSetItem(key, value);
+  if(SYNCED_STORAGE_KEYS.includes(key)){
+    scheduleNotionSync();
+  }
+};
+
+/* ---------- 공통 유틸 ---------- */
+function formatManwon(manwon){
+  const totalWon = Math.round(manwon*10000); // 100원 단위까지 정확히 표시
+  const sign = totalWon < 0 ? "-" : "";
+  const absWon = Math.abs(totalWon);
+  const eok = Math.floor(absWon/100000000);
+  const afterEok = absWon % 100000000;
+  const man = Math.floor(afterEok/10000);
+  const won = afterEok % 10000;
+
+  const parts = [];
+  if(eok > 0) parts.push(`${eok}억`);
+  if(man > 0) parts.push(`${man.toLocaleString()}만`);
+  if(won > 0) parts.push(`${won.toLocaleString()}원`);
+
+  if(parts.length === 0) return `${sign}0원`;
+  let result = parts.join(' ');
+  if(!parts[parts.length-1].endsWith('원')) result += '원';
+  return sign + result;
+}
+
+function monthlyRate(annualPct){ return annualPct/100/12; }
+
+/* FV in 만원 given P,M in 만원, years, annualPct */
+function futureValue(P, M, years, annualPct){
+  const i = monthlyRate(annualPct);
+  const N = Math.round(years*12);
+  if(Math.abs(i) < 1e-9){
+    return P + M*N;
+  }
+  const growth = Math.pow(1+i, N);
+  return P*growth + M*((growth-1)/i);
+}
+
+/* 계산기 탭 입력값 자동저장 + 포트폴리오 순자산 연동을 위한 공통 정의 */
+const CALC_INPUT_GROUPS = {
+  future:  ['f-present','f-monthly','f-years','f-rate'],
+  period:  ['p-present','p-monthly','p-target','p-rate'],
+  monthly: ['m-present','m-years','m-target','m-rate'],
+  fire:    ['fire-age','fire-present','fire-monthly','fire-rate','fire-expense','fire-withdraw']
+};
+const CALC_ALL_INPUT_IDS = [].concat(...Object.values(CALC_INPUT_GROUPS));
+const PRESENT_ASSET_INPUT_IDS = ['f-present','p-present','m-present','fire-present'];
+
+function saveCalcInput(id){
+  const saved = getSavedCalcInputs();
+  const el = document.getElementById(id);
+  if(el) saved[id] = el.value;
+  localStorage.setItem('richcalc_calc_inputs_v1', JSON.stringify(saved));
+}
+
+function getSavedCalcInputs(){
+  try{ return JSON.parse(localStorage.getItem('richcalc_calc_inputs_v1')||'{}'); }
+  catch(e){ return {}; }
+}
+
+// 포트폴리오 순자산이 바뀔 때마다, 사용자가 직접 손댄 적 없는 "현재 자산" 필드만 실시간으로 갱신
+function syncPresentAssetFieldsFromPortfolio(){
+  const saved = getSavedCalcInputs();
+  const netAsset = pfAssets.reduce((sum,a)=>sum+a.amount,0) - pfDebts.reduce((sum,d)=>sum+d.amount,0);
+  if(netAsset <= 0) return;
+  PRESENT_ASSET_INPUT_IDS.forEach(id=>{
+    if(saved[id] === undefined || saved[id] === ''){
+      const el = document.getElementById(id);
+      if(el) el.value = netAsset;
+    }
+  });
+}
+
+/* ---------- 탭 전환 ---------- */
+document.querySelectorAll('.main-tab').forEach(btn=>{
+  if(btn.disabled) return;
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p=>p.style.display='none');
+    document.getElementById('panel-'+btn.dataset.main).style.display='block';
+  });
+});
+
+document.querySelectorAll('.sub-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.sub-panel').forEach(p=>p.style.display='none');
+    document.getElementById('sub-'+btn.dataset.sub).style.display='block';
+  });
+});
+
+/* ================= 1-1. 미래 자산 ================= */
+let futureChart;
+function calcFuture(){
+  const P = parseFloat(document.getElementById('f-present').value)||0;
+  const M = parseFloat(document.getElementById('f-monthly').value)||0;
+  const years = parseFloat(document.getElementById('f-years').value)||0;
+  const rate = parseFloat(document.getElementById('f-rate').value)||0;
+
+  const total = futureValue(P,M,years,rate);
+  const principal = P + M*years*12;
+  const interest = total - principal;
+  const returnRate = principal>0 ? (interest/principal*100) : 0;
+
+  document.getElementById('f-total').textContent = formatManwon(total);
+  document.getElementById('f-principal').textContent = formatManwon(principal);
+  document.getElementById('f-return-rate').textContent = returnRate.toFixed(2)+'%';
+  document.getElementById('f-interest').textContent = formatManwon(interest);
+
+  const principalPct = total>0 ? Math.max(0, Math.min(100, principal/total*100)) : 0;
+  const profitPct = 100 - principalPct;
+  document.getElementById('f-bar-principal').style.width = principalPct+'%';
+  document.getElementById('f-bar-profit').style.width = profitPct+'%';
+  document.getElementById('f-principal-pct').textContent = `납입금 ${principalPct.toFixed(0)}%`;
+  document.getElementById('f-profit-pct').textContent = `수익금 ${profitPct.toFixed(0)}%`;
+
+  // 연도별 데이터
+  const labels=[], principalSeries=[], totalSeries=[];
+  for(let y=0; y<=years; y++){
+    labels.push(y+'년');
+    principalSeries.push(P + M*y*12);
+    totalSeries.push(futureValue(P,M,y,rate));
+  }
+
+  const ctx = document.getElementById('f-chart');
+  if(futureChart) futureChart.destroy();
+  futureChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'납입 원금', data:principalSeries, borderColor:'#A69C8A', backgroundColor:'rgba(166,156,138,0.14)', fill:true, tension:0.3, pointRadius:0},
+        {label:'총 자산', data:totalSeries, borderColor:'#5C7A5C', backgroundColor:'rgba(92,122,92,0.16)', fill:true, tension:0.3, pointRadius:0}
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{y:{ticks:{callback:(v)=>formatManwon(v)}}}
+    }
+  });
+}
+
+/* ================= 1-2. 목표 달성 기간 ================= */
+let periodChart;
+function resetPeriodStats(){
+  document.getElementById('p-final-asset').textContent = '-';
+  document.getElementById('p-return-rate').textContent = '-';
+  document.getElementById('p-interest').textContent = '-';
+  document.getElementById('p-principal-pct').textContent = '납입금 -';
+  document.getElementById('p-profit-pct').textContent = '수익금 -';
+  document.getElementById('p-bar-principal').style.width = '0%';
+  document.getElementById('p-bar-profit').style.width = '0%';
+  if(periodChart){ periodChart.destroy(); periodChart = null; }
+}
+
+function calcPeriod(){
+  const P = parseFloat(document.getElementById('p-present').value)||0;
+  const M = parseFloat(document.getElementById('p-monthly').value)||0;
+  const target = parseFloat(document.getElementById('p-target').value)||0;
+  const rate = parseFloat(document.getElementById('p-rate').value)||0;
+  const i = monthlyRate(rate);
+  const msgBox = document.getElementById('p-message');
+  msgBox.innerHTML='';
+  resetPeriodStats();
+
+  if(target <= P){
+    document.getElementById('p-period').textContent = '0년 0개월';
+    msgBox.innerHTML = `<div class="msg good">이미 목표 금액을 달성했어요.</div>`;
+    return;
+  }
+
+  if(M <= 0 && rate <= 0){
+    document.getElementById('p-period').textContent = '도달 불가';
+    msgBox.innerHTML = `<div class="msg bad">이 조건으로는 목표에 도달할 수 없어요. 월 적립금을 늘리거나 연 수익률을 높여보세요.</div>`;
+    return;
+  }
+
+  let N;
+  if(Math.abs(i) < 1e-9){
+    N = (target - P) / M;
+  } else {
+    const denom = P + M/i;
+    const numer = target + M/i;
+    if(denom <= 0 || numer <= 0 || (numer/denom) <= 0){
+      document.getElementById('p-period').textContent = '도달 불가';
+      msgBox.innerHTML = `<div class="msg bad">이 조건으로는 목표에 도달할 수 없어요. 월 적립금을 늘리거나 연 수익률을 높여보세요.</div>`;
+      return;
+    }
+    N = Math.log(numer/denom) / Math.log(1+i);
+  }
+
+  if(N > 600){
+    document.getElementById('p-period').textContent = '50년 이상';
+    msgBox.innerHTML = `<div class="msg warn">설정하신 조건으로는 50년 이상 소요돼요. 월 적립금을 늘리거나 목표액을 낮춰보세요.</div>`;
+    return;
+  }
+
+  const yearsPart = Math.floor(N/12);
+  const monthsPart = Math.round(N%12);
+  document.getElementById('p-period').textContent = `${yearsPart}년 ${monthsPart}개월`;
+
+  // 달성 시 자산, 수익률, 이자수익
+  const finalAsset = futureValue(P, M, N/12, rate);
+  const principal = P + M*N;
+  const interest = finalAsset - principal;
+  const returnRate = principal>0 ? (interest/principal*100) : 0;
+
+  document.getElementById('p-final-asset').textContent = formatManwon(finalAsset);
+  document.getElementById('p-return-rate').textContent = returnRate.toFixed(2)+'%';
+  document.getElementById('p-interest').textContent = formatManwon(interest);
+
+  const principalPct = finalAsset>0 ? Math.max(0, Math.min(100, principal/finalAsset*100)) : 0;
+  const profitPct = 100 - principalPct;
+  document.getElementById('p-bar-principal').style.width = principalPct+'%';
+  document.getElementById('p-bar-profit').style.width = profitPct+'%';
+  document.getElementById('p-principal-pct').textContent = `납입금 ${principalPct.toFixed(0)}%`;
+  document.getElementById('p-profit-pct').textContent = `수익금 ${profitPct.toFixed(0)}%`;
+
+  // 연도별 그래프 (0년 ~ 달성 연차까지, 소수점 연차는 올림)
+  const totalYears = Math.ceil(N/12);
+  const labels=[], principalSeries=[], totalSeries=[];
+  for(let y=0; y<=totalYears; y++){
+    const yy = Math.min(y, N/12);
+    labels.push(y+'년');
+    principalSeries.push(P + M*yy*12);
+    totalSeries.push(futureValue(P,M,yy,rate));
+  }
+
+  const ctx = document.getElementById('p-chart');
+  if(periodChart) periodChart.destroy();
+  periodChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'납입 원금', data:principalSeries, borderColor:'#A69C8A', backgroundColor:'rgba(166,156,138,0.14)', fill:true, tension:0.3, pointRadius:0},
+        {label:'총 자산', data:totalSeries, borderColor:'#8B6F47', backgroundColor:'rgba(139,111,71,0.16)', fill:true, tension:0.3, pointRadius:0}
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{y:{ticks:{callback:(v)=>formatManwon(v)}}}
+    }
+  });
+}
+
+/* ================= 1-3. 월 적립금 ================= */
+let monthlyChart;
+function resetMonthlyStats(){
+  document.getElementById('m-target-asset').textContent = '-';
+  document.getElementById('m-total-contrib').textContent = '-';
+  document.getElementById('m-interest').textContent = '-';
+  document.getElementById('m-principal-pct').textContent = '납입금 -';
+  document.getElementById('m-profit-pct').textContent = '수익금 -';
+  document.getElementById('m-bar-principal').style.width = '0%';
+  document.getElementById('m-bar-profit').style.width = '0%';
+  if(monthlyChart){ monthlyChart.destroy(); monthlyChart = null; }
+}
+
+function calcMonthly(){
+  const P = parseFloat(document.getElementById('m-present').value)||0;
+  const years = parseFloat(document.getElementById('m-years').value)||0;
+  const target = parseFloat(document.getElementById('m-target').value)||0;
+  const rate = parseFloat(document.getElementById('m-rate').value)||0;
+  const i = monthlyRate(rate);
+  const N = years*12;
+  const msgBox = document.getElementById('m-message');
+  msgBox.innerHTML='';
+  resetMonthlyStats();
+
+  let M;
+  if(Math.abs(i) < 1e-9){
+    M = (target - P) / N;
+  } else {
+    const growth = Math.pow(1+i, N);
+    M = (target - P*growth) * i / (growth - 1);
+  }
+
+  document.getElementById('m-target-asset').textContent = formatManwon(target);
+
+  if(M <= 0){
+    document.getElementById('m-result').textContent = '0만원';
+    msgBox.innerHTML = `<div class="msg good">추가 적립 없이도 목표 금액을 달성할 수 있어요.</div>`;
+    return;
+  }
+
+  document.getElementById('m-result').textContent = formatManwon(M) + ' /월';
+
+  const totalContrib = P + M*N;
+  const interest = target - totalContrib;
+  document.getElementById('m-total-contrib').textContent = formatManwon(totalContrib);
+  document.getElementById('m-interest').textContent = formatManwon(interest);
+
+  const principalPct = target>0 ? Math.max(0, Math.min(100, totalContrib/target*100)) : 0;
+  const profitPct = 100 - principalPct;
+  document.getElementById('m-bar-principal').style.width = principalPct+'%';
+  document.getElementById('m-bar-profit').style.width = profitPct+'%';
+  document.getElementById('m-principal-pct').textContent = `납입금 ${principalPct.toFixed(0)}%`;
+  document.getElementById('m-profit-pct').textContent = `수익금 ${profitPct.toFixed(0)}%`;
+
+  // 연도별 그래프
+  const labels=[], principalSeries=[], totalSeries=[];
+  for(let y=0; y<=years; y++){
+    labels.push(y+'년');
+    principalSeries.push(P + M*y*12);
+    totalSeries.push(futureValue(P,M,y,rate));
+  }
+
+  const ctx = document.getElementById('m-chart');
+  if(monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'납입 원금', data:principalSeries, borderColor:'#A69C8A', backgroundColor:'rgba(166,156,138,0.14)', fill:true, tension:0.3, pointRadius:0},
+        {label:'총 자산', data:totalSeries, borderColor:'#B98A2E', backgroundColor:'rgba(185,138,46,0.16)', fill:true, tension:0.3, pointRadius:0}
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{y:{ticks:{callback:(v)=>formatManwon(v)}}}
+    }
+  });
+}
+
+/* ================= 2. FIRE 계산기 ================= */
+document.querySelectorAll('#fire-withdraw-presets .preset-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#fire-withdraw-presets .preset-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('fire-withdraw').value = btn.dataset.val;
+    saveCalcInput('fire-withdraw');
+  });
+});
+document.getElementById('fire-withdraw').addEventListener('input', ()=>{
+  document.querySelectorAll('#fire-withdraw-presets .preset-btn').forEach(b=>b.classList.remove('active'));
+});
+
+let fireChart;
+function toggleFireAccordion(){
+  const content = document.getElementById('fire-accordion-content');
+  const btn = document.getElementById('fire-accordion-btn');
+  const isOpen = content.style.display !== 'none';
+  content.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = (isOpen ? '▲' : '▼') + ' 어떻게 계산되나요?';
+}
+
+function renderFireAccordion(expense, withdraw, target, age, retireAge, monthly, rate){
+  const content = document.getElementById('fire-accordion-content');
+  content.innerHTML = `
+    <div class="step">
+      <div class="step-title">① 연간 생활비는 얼마나 필요할까요?</div>
+      은퇴 후 연간 지출액으로 입력하신 값을 그대로 사용해요.
+      <div class="step-formula">연간 생활비 = ${formatManwon(expense)}</div>
+    </div>
+    <div class="step">
+      <div class="step-title">② 필요한 목표 자산은 얼마일까요?</div>
+      매년 자산의 ${withdraw}%만 인출해도 자산이 유지된다고 가정해요.
+      <div class="step-formula">${formatManwon(expense)} ÷ ${withdraw}% = ${formatManwon(target)}</div>
+    </div>
+    <div class="step">
+      <div class="step-title">③ 언제 목표 자산에 도달할까요?</div>
+      현재 ${age}세, 월 ${formatManwon(monthly)}씩 연 ${rate}% 수익률로 투자한다고 가정하면
+      <div class="step-formula">예상 은퇴 나이 = ${typeof retireAge === 'number' ? Math.round(retireAge)+'세' : retireAge}</div>
+    </div>
+    <div class="step">
+      <div class="step-title">④ 그 돈으로 얼마나 버틸까요?</div>
+      은퇴 후에도 남은 자산은 계속 연 ${rate}%로 투자되고, 매년 생활비만큼 빠져나간다고 가정해서 자산이 소진되는 시점을 계산해요.
+    </div>
+  `;
+}
+
+function calcFire(){
+  const age = parseFloat(document.getElementById('fire-age').value)||0;
+  const P = parseFloat(document.getElementById('fire-present').value)||0;
+  const M = parseFloat(document.getElementById('fire-monthly').value)||0;
+  const rate = parseFloat(document.getElementById('fire-rate').value)||0;
+  const expense = parseFloat(document.getElementById('fire-expense').value)||0;
+  const withdraw = parseFloat(document.getElementById('fire-withdraw').value)||4;
+
+  const target = expense / (withdraw/100);
+  document.getElementById('fire-target').textContent = formatManwon(target);
+
+  const msgBox = document.getElementById('fire-message');
+  msgBox.innerHTML='';
+
+  const i = monthlyRate(rate);
+  let N;
+  if(target <= P){
+    N = 0;
+  } else if(M <= 0 && rate <= 0){
+    document.getElementById('fire-retire-age').textContent = '도달 불가';
+    msgBox.innerHTML = `<div class="msg bad">현재 조건으로는 목표 자산에 도달할 수 없어요.</div>`;
+    renderFireAccordion(expense, withdraw, target, age, '도달 불가', M, rate);
+    if(fireChart) fireChart.destroy();
+    return;
+  } else if(Math.abs(i) < 1e-9){
+    N = (target - P) / M;
+  } else {
+    const denom = P + M/i;
+    const numer = target + M/i;
+    if(denom<=0 || numer<=0 || (numer/denom)<=0){
+      document.getElementById('fire-retire-age').textContent = '도달 불가';
+      msgBox.innerHTML = `<div class="msg bad">현재 조건으로는 목표 자산에 도달할 수 없어요.</div>`;
+      renderFireAccordion(expense, withdraw, target, age, '도달 불가', M, rate);
+      if(fireChart) fireChart.destroy();
+      return;
+    }
+    N = Math.log(numer/denom)/Math.log(1+i);
+  }
+
+  if(N > 720){ // 60년 이상 걸리면 사실상 무의미
+    document.getElementById('fire-retire-age').textContent = '60년 이상';
+    msgBox.innerHTML = `<div class="msg warn">현재 조건으로는 은퇴까지 60년 이상 걸려요. 저축액이나 수익률을 조정해보세요.</div>`;
+    renderFireAccordion(expense, withdraw, target, age, '60년 이상', M, rate);
+    if(fireChart) fireChart.destroy();
+    return;
+  }
+
+  const yearsToRetire = N/12;
+  const retireAge = age + yearsToRetire;
+  document.getElementById('fire-retire-age').textContent = `${Math.round(retireAge)}세 (약 ${yearsToRetire.toFixed(1)}년 후)`;
+  renderFireAccordion(expense, withdraw, target, age, retireAge, M, rate);
+
+  // 은퇴 후 소진 시뮬레이션
+  let asset = target;
+  const ages=[retireAge], assets=[asset];
+  let depletedAge = null;
+  for(let y=1; y<=70; y++){
+    asset = asset*(1+rate/100) - expense;
+    ages.push(retireAge + y);
+    assets.push(Math.max(asset,0));
+    if(asset <= 0 && depletedAge===null){
+      depletedAge = retireAge + y;
+      break;
+    }
+  }
+
+  if(depletedAge){
+    msgBox.innerHTML = `<div class="msg warn">이 조건으로 은퇴하면 자산은 약 ${Math.round(depletedAge)}세에 소진될 것으로 예상돼요.</div>`;
+  } else {
+    msgBox.innerHTML = `<div class="msg good">이 조건이면 은퇴 후 70년(약 ${Math.round(retireAge+70)}세)까지도 자산이 소진되지 않아요.</div>`;
+  }
+
+  const ctx = document.getElementById('fire-chart');
+  if(fireChart) fireChart.destroy();
+  const retirementFlagPlugin = {
+    id: 'retirementFlag',
+    afterDatasetsDraw(chart){
+      const {ctx, chartArea} = chart;
+      const meta = chart.getDatasetMeta(0);
+      const point = meta.data[0];
+      if(!point || !chartArea) return;
+      ctx.save();
+      ctx.strokeStyle = '#8B6F47';
+      ctx.setLineDash([4,4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(point.x, chartArea.top);
+      ctx.lineTo(point.x, chartArea.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🚩', point.x, chartArea.top + 4);
+      ctx.font = "11px 'DM Mono', monospace";
+      ctx.fillStyle = '#8B6F47';
+      ctx.fillText('은퇴 시작', point.x, chartArea.top + 26);
+      ctx.restore();
+    }
+  };
+
+  fireChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: ages.map(a=>Math.round(a)+'세'),
+      datasets:[{label:'은퇴 후 자산', data:assets, borderColor:'#8B6F47', backgroundColor:'rgba(139,111,71,0.16)', fill:true, tension:0.3, pointRadius:0}]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{top:28}},
+      plugins:{legend:{position:'bottom'}},
+      scales:{y:{ticks:{callback:(v)=>formatManwon(v)}}}
+    },
+    plugins:[retirementFlagPlugin]
+  });
+}
+
+/* ================= 3. 포트폴리오 분해 ================= */
+const pfColors = ['#8B6F47','#5C7A5C','#B98A2E','#8B6F9E','#B5533C','#6E8B8B','#A65B4B','#8A7F6D','#C99A4B','#5B6E61'];
+let pfChart;
+let pfAssets = [];
+let pfDebts = [];
+
+function pfUid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function loadPortfolio(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('richcalc_portfolio_v2')||'{}');
+    pfAssets = Array.isArray(saved.assets) ? saved.assets : [];
+    pfDebts = Array.isArray(saved.debts) ? saved.debts : [];
+  }catch(e){
+    pfAssets = [];
+    pfDebts = [];
+  }
+}
+
+function savePortfolio(){
+  localStorage.setItem('richcalc_portfolio_v2', JSON.stringify({assets:pfAssets, debts:pfDebts}));
+  const ind = document.getElementById('pf-save-indicator');
+  ind.classList.add('show');
+  clearTimeout(window._pfSaveTimeout);
+  window._pfSaveTimeout = setTimeout(()=>ind.classList.remove('show'), 1200);
+}
+
+function addAsset(){
+  const nameInput = document.getElementById('pf-asset-name-input');
+  const amountInput = document.getElementById('pf-asset-amount-input');
+  const name = nameInput.value.trim();
+  const amount = parseFloat(amountInput.value);
+  if(!name || !amount || amount<=0) return;
+  pfAssets.push({id:pfUid(), name, amount});
+  nameInput.value=''; amountInput.value='';
+  nameInput.focus();
+  renderPortfolio();
+  savePortfolio();
+}
+
+function addDebt(){
+  const nameInput = document.getElementById('pf-debt-name-input');
+  const amountInput = document.getElementById('pf-debt-amount-input');
+  const name = nameInput.value.trim();
+  const amount = parseFloat(amountInput.value);
+  if(!name || !amount || amount<=0) return;
+  pfDebts.push({id:pfUid(), name, amount});
+  nameInput.value=''; amountInput.value='';
+  nameInput.focus();
+  renderPortfolio();
+  savePortfolio();
+}
+
+function removeAsset(id){
+  pfAssets = pfAssets.filter(a=>a.id!==id);
+  renderPortfolio();
+  savePortfolio();
+}
+
+function removeDebt(id){
+  pfDebts = pfDebts.filter(d=>d.id!==id);
+  renderPortfolio();
+  savePortfolio();
+}
+
+function renderItemList(container, items, colored, removeFn){
+  if(items.length===0){
+    container.innerHTML = `<div class="item-empty">아직 추가된 항목이 없어요.</div>`;
+    return;
+  }
+  container.innerHTML = items.map((item,idx)=>`
+    <div class="item-row">
+      <div class="item-name">
+        ${colored ? `<span class="item-color" style="background:${pfColors[idx % pfColors.length]}"></span>` : ''}
+        ${item.name}
+      </div>
+      <div class="item-amount">${formatManwon(item.amount)}</div>
+      <button class="item-remove" onclick="${removeFn}('${item.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function renderPortfolio(){
+  renderItemList(document.getElementById('pf-asset-list'), pfAssets, true, 'removeAsset');
+  renderItemList(document.getElementById('pf-debt-list'), pfDebts, false, 'removeDebt');
+
+  const totalAsset = pfAssets.reduce((sum,a)=>sum+a.amount, 0);
+  const totalDebt = pfDebts.reduce((sum,d)=>sum+d.amount, 0);
+  const netAsset = totalAsset - totalDebt;
+
+  document.getElementById('pf-total-asset').textContent = formatManwon(totalAsset);
+  document.getElementById('pf-total-debt').textContent = formatManwon(totalDebt);
+  document.getElementById('pf-net-asset').textContent = formatManwon(netAsset);
+
+  syncPresentAssetFieldsFromPortfolio();
+
+  const ctx = document.getElementById('pf-chart');
+  if(pfChart) pfChart.destroy();
+  if(pfAssets.length===0 || totalAsset<=0){
+    return;
+  }
+  pfChart = new Chart(ctx, {
+    type:'pie',
+    data:{
+      labels: pfAssets.map(a=>a.name),
+      datasets:[{data:pfAssets.map(a=>a.amount), backgroundColor:pfAssets.map((_,idx)=>pfColors[idx % pfColors.length])}]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}}
+    }
+  });
+}
+
+// 엔터 키로도 추가 가능하게
+['pf-asset-name-input','pf-asset-amount-input'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') addAsset(); });
+});
+['pf-debt-name-input','pf-debt-amount-input'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') addDebt(); });
+});
+
+/* ---- 순자산 스냅샷 히스토리 ---- */
+let pfHistory = [];
+let pfHistoryChart;
+let pfHistoryShowAll = false;
+const HISTORY_RECENT_MONTHS = 12;
+const HISTORY_MAX_MONTHS = 60; // 최대 5년치까지만 보관
+
+function monthKey(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function monthLabel(key){
+  const [y,m] = key.split('-');
+  return `${y}.${m}`;
+}
+
+function loadPortfolioHistory(){
+  try{
+    pfHistory = JSON.parse(localStorage.getItem('richcalc_portfolio_history')||'[]');
+    if(!Array.isArray(pfHistory)) pfHistory = [];
+  }catch(e){ pfHistory = []; }
+}
+
+function savePortfolioHistoryStorage(){
+  localStorage.setItem('richcalc_portfolio_history', JSON.stringify(pfHistory));
+}
+
+function savePortfolioSnapshot(){
+  const totalAsset = pfAssets.reduce((sum,a)=>sum+a.amount, 0);
+  const totalDebt = pfDebts.reduce((sum,d)=>sum+d.amount, 0);
+  const netAsset = totalAsset - totalDebt;
+  const key = document.getElementById('pf-snapshot-month').value || monthKey(new Date());
+  const existingIdx = pfHistory.findIndex(h=>h.month===key);
+  const entry = {month:key, totalAsset, totalDebt, netAsset};
+  if(existingIdx>=0) pfHistory[existingIdx] = entry;
+  else pfHistory.push(entry);
+  pfHistory.sort((a,b)=>a.month.localeCompare(b.month));
+  if(pfHistory.length > HISTORY_MAX_MONTHS){
+    pfHistory = pfHistory.slice(pfHistory.length - HISTORY_MAX_MONTHS);
+  }
+  savePortfolioHistoryStorage();
+  renderPortfolioHistory();
+}
+
+function removePortfolioSnapshot(month){
+  pfHistory = pfHistory.filter(h=>h.month!==month);
+  savePortfolioHistoryStorage();
+  renderPortfolioHistory();
+}
+
+function togglePortfolioHistoryView(){
+  pfHistoryShowAll = !pfHistoryShowAll;
+  renderPortfolioHistory();
+}
+
+function renderPortfolioHistory(){
+  const listEl = document.getElementById('pf-history-list');
+  const toggleBtn = document.getElementById('pf-history-toggle');
+  const subEl = document.getElementById('pf-history-sub');
+
+  const hasMore = pfHistory.length > HISTORY_RECENT_MONTHS;
+  const displayed = (pfHistoryShowAll || !hasMore) ? pfHistory : pfHistory.slice(-HISTORY_RECENT_MONTHS);
+
+  if(hasMore){
+    toggleBtn.style.display = 'inline-block';
+    toggleBtn.textContent = pfHistoryShowAll ? '최근 12개월만 보기' : `전체 보기 (${pfHistory.length}개월)`;
+    subEl.textContent = pfHistoryShowAll ? `전체 ${pfHistory.length}개월 기록을 보고 있어요.` : `최근 ${HISTORY_RECENT_MONTHS}개월만 표시하고 있어요.`;
+  } else {
+    toggleBtn.style.display = 'none';
+    subEl.textContent = '이번 달 스냅샷을 저장하면 시간에 따른 변화를 볼 수 있어요.';
+  }
+
+  if(displayed.length===0){
+    listEl.innerHTML = `<div class="item-empty">아직 저장된 스냅샷이 없어요. "이번 달 저장"을 눌러보세요.</div>`;
+  } else {
+    // 최신 항목이 위로 오도록 리스트는 역순 표시
+    listEl.innerHTML = [...displayed].reverse().map(h=>`
+      <div class="item-row">
+        <div class="item-name">${monthLabel(h.month)}</div>
+        <div class="item-amount">${formatManwon(h.netAsset)}</div>
+        <button class="item-remove" onclick="removePortfolioSnapshot('${h.month}')">✕</button>
+      </div>
+    `).join('');
+  }
+
+  const ctx = document.getElementById('pf-history-chart');
+  if(pfHistoryChart) pfHistoryChart.destroy();
+  if(displayed.length===0) return;
+
+  pfHistoryChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: displayed.map(h=>monthLabel(h.month)),
+      datasets:[{label:'순자산', data:displayed.map(h=>h.netAsset), borderColor:'#5C7A5C', backgroundColor:'rgba(92,122,92,0.16)', fill:true, tension:0.3, pointRadius:3}]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:(v)=>formatManwon(v)}}}
+    }
+  });
+}
+
+/* ================= 5. 월급 배분기 =================
+   데이터 구조:
+   salCats = [
+     { id, name, open, items:[ {id, name, amount} ] }
+   ]
+*/
+const SAL_DEFAULT_CATS = ['고정지출','생활비','저축','투자','자기계발 & 취미'];
+const SAL_COLORS = ['#B5533C','#5C7A5C','#8B6F47','#6E8B8B','#B98A2E','#8B6F9E','#A65B4B','#5B6E61'];
+
+let salCats = [];
+
+function makeCat(name){ return {id:pfUid(), name, open:true, items:[]}; }
+
+function loadSalary(){
+  try{
+    const d = JSON.parse(localStorage.getItem('richcalc_salary_v2')||'null');
+    if(d && Array.isArray(d.cats) && d.cats.length>0){
+      salCats = d.cats;
+      if(d.income!==undefined) document.getElementById('sal-income').value = d.income;
+    } else {
+      salCats = SAL_DEFAULT_CATS.map(makeCat);
+    }
+  }catch(e){
+    salCats = SAL_DEFAULT_CATS.map(makeCat);
+  }
+}
+
+function saveSalary(){
+  const income = parseFloat(document.getElementById('sal-income').value)||0;
+  localStorage.setItem('richcalc_salary_v2', JSON.stringify({income, cats:salCats}));
+  const ind = document.getElementById('sal-save-indicator');
+  ind.classList.add('show');
+  clearTimeout(window._salSaveTimeout);
+  window._salSaveTimeout = setTimeout(()=>ind.classList.remove('show'), 1200);
+}
+
+function salIncome(){ return Math.max(0, parseFloat(document.getElementById('sal-income').value)||0) * 10000; } // 만원 → 원
+function catTotal(c){ return c.items.reduce((s,x)=>s+(parseFloat(x.amount)||0)*10000, 0); } // 원 단위
+function totalAllocated(){ return salCats.reduce((s,c)=>s+catTotal(c), 0); }
+
+// 카테고리 리스트(DOM)는 그대로 두고 요약/비율바/각 카테고리 합계 숫자만 갱신
+// (금액 입력 중 매 타이핑마다 리스트를 다시 그리면 커서/소수점 입력이 깨지므로 분리)
+function updateSalarySummary(){
+  const inc = salIncome();
+
+  renderRatioBar(inc);
+
+  // 카테고리별 합계·비율 텍스트만 갱신 (input은 건드리지 않음)
+  salCats.forEach((cat, ci)=>{
+    const total = catTotal(cat);
+    const pct = inc>0 ? Math.round(total/inc*100) : 0;
+    const totalEl = document.querySelector(`#sub-${cat.id}`)?.previousElementSibling?.querySelector('.cat-total');
+    const pctEl = document.querySelector(`#sub-${cat.id}`)?.previousElementSibling?.querySelector('.cat-pct');
+    if(totalEl) totalEl.textContent = total>0 ? formatManwon(total/10000) : '—';
+    if(pctEl) pctEl.textContent = inc>0 && total>0 ? pct+'%' : '';
+  });
+
+  const alloc = totalAllocated();
+  const reserve = inc - alloc;
+  const resEl = document.getElementById('sal-reserve-amt');
+  const resHint = document.getElementById('sal-reserve-hint');
+  resEl.className = 'sal-reserve-amt';
+  if(inc<=0){
+    resEl.textContent = '—'; resHint.textContent = '월급을 입력하면 자동 계산됩니다';
+  } else if(reserve<0){
+    resEl.textContent = formatManwon(-reserve/10000)+' 초과';
+    resEl.classList.add('over');
+    resHint.textContent = '배분 합계가 월급을 초과했어요';
+  } else if(reserve===0){
+    resEl.textContent = '0원'; resEl.classList.add('zero'); resHint.textContent = '전부 배분됨';
+  } else {
+    resEl.textContent = formatManwon(reserve/10000);
+    resEl.classList.add('pos');
+    resHint.textContent = `배분하고 남은 ${Math.round(reserve/inc*100)}%가 자동으로 비상금이 돼요`;
+  }
+
+  document.getElementById('sal-total-amt').textContent = inc>0 ? formatManwon(alloc/10000) : '—';
+  document.getElementById('sal-total-pct').textContent = inc>0 ? Math.round(alloc/inc*100)+'%' : '—';
+  document.getElementById('sal-cat-count').textContent = salCats.length+'개';
+  document.getElementById('sal-annual').textContent = inc>0 ? formatManwon(alloc*12/10000) : '—';
+
+  if(typeof renderReserveSummary==='function') renderReserveSummary();
+
+  saveSalary();
+}
+
+function renderSalary(){
+  const inc = salIncome();
+
+  renderRatioBar(inc);
+  renderCatList(inc);
+
+  const alloc = totalAllocated();
+  const reserve = inc - alloc;
+  const resEl = document.getElementById('sal-reserve-amt');
+  const resHint = document.getElementById('sal-reserve-hint');
+  resEl.className = 'sal-reserve-amt';
+  if(inc<=0){
+    resEl.textContent = '—'; resHint.textContent = '월급을 입력하면 자동 계산됩니다';
+  } else if(reserve<0){
+    resEl.textContent = formatManwon(-reserve/10000)+' 초과';
+    resEl.classList.add('over');
+    resHint.textContent = '배분 합계가 월급을 초과했어요';
+  } else if(reserve===0){
+    resEl.textContent = '0원'; resEl.classList.add('zero'); resHint.textContent = '전부 배분됨';
+  } else {
+    resEl.textContent = formatManwon(reserve/10000);
+    resEl.classList.add('pos');
+    resHint.textContent = `배분하고 남은 ${Math.round(reserve/inc*100)}%가 자동으로 비상금이 돼요`;
+  }
+
+  document.getElementById('sal-total-amt').textContent = inc>0 ? formatManwon(alloc/10000) : '—';
+  document.getElementById('sal-total-pct').textContent = inc>0 ? Math.round(alloc/inc*100)+'%' : '—';
+  document.getElementById('sal-cat-count').textContent = salCats.length+'개';
+  document.getElementById('sal-annual').textContent = inc>0 ? formatManwon(alloc*12/10000) : '—';
+
+  if(typeof renderReserveSummary==='function') renderReserveSummary();
+
+  saveSalary();
+}
+
+function renderRatioBar(inc){
+  const bar = document.getElementById('sal-ratio-bar');
+  const leg = document.getElementById('sal-ratio-legend');
+  bar.innerHTML=''; leg.innerHTML='';
+  if(inc<=0) return;
+  const reserve = Math.max(0, inc - totalAllocated());
+
+  salCats.forEach((c,i)=>{
+    const t = catTotal(c); if(t<=0) return;
+    const pct = t/inc*100, col = SAL_COLORS[i%SAL_COLORS.length];
+    const seg = document.createElement('div');
+    seg.className='sal-ratio-seg'; seg.style.flex=pct; seg.style.background=col;
+    bar.appendChild(seg);
+    const row = document.createElement('div'); row.className='sal-leg-row';
+    row.innerHTML = `<div class="sal-leg-left"><div class="sal-leg-dot" style="background:${col}"></div><span class="sal-leg-name">${c.name||'—'}</span><span class="sal-leg-pct">${Math.round(pct)}%</span></div><span class="sal-leg-amt">${formatManwon(t/10000)}</span>`;
+    leg.appendChild(row);
+  });
+
+  if(reserve>0){
+    const pct = reserve/inc*100;
+    const seg = document.createElement('div');
+    seg.className='sal-ratio-seg'; seg.style.flex=pct; seg.style.background='#DDD5C2';
+    bar.appendChild(seg);
+    const row = document.createElement('div'); row.className='sal-leg-row';
+    row.style.background = '#F2ECE0';
+    row.innerHTML = `<div class="sal-leg-left"><div class="sal-leg-dot" style="background:#C7BCA4"></div><span class="sal-leg-name" style="color:var(--sub)">비상금</span><span class="sal-leg-pct">${Math.round(pct)}%</span></div><span class="sal-leg-amt" style="color:var(--sub)">${formatManwon(reserve/10000)}</span>`;
+    leg.appendChild(row);
+  }
+}
+
+function renderCatList(inc){
+  const el = document.getElementById('sal-cat-list');
+  el.innerHTML = '';
+
+  salCats.forEach((cat, ci)=>{
+    const total = catTotal(cat);
+    const pct = inc>0 ? Math.round(total/inc*100) : 0;
+    const color = SAL_COLORS[ci % SAL_COLORS.length];
+
+    const wrap = document.createElement('div'); wrap.className='cat-item';
+
+    const hdr = document.createElement('div'); hdr.className='cat-header';
+    hdr.innerHTML = `
+      <span class="cat-chevron ${cat.open?'open':''}" id="chev-${cat.id}">▶</span>
+      <span class="cat-color-dot" style="background:${color}"></span>
+      <input class="cat-name-inp" type="text" placeholder="카테고리 이름" value="${cat.name}"
+        oninput="salCats[${ci}].name=this.value; saveSalary(); renderRatioBar(salIncome());"
+        onclick="event.stopPropagation()">
+      <span class="cat-total">${total>0 ? formatManwon(total/10000) : '—'}</span>
+      <span class="cat-pct">${inc>0 && total>0 ? pct+'%' : ''}</span>
+      <button class="cat-add-item-btn" onclick="event.stopPropagation(); toggleAddRow('${cat.id}')" title="항목 추가">+</button>`;
+    hdr.addEventListener('click', ()=>toggleCat(ci));
+    wrap.appendChild(hdr);
+
+    const sub = document.createElement('div');
+    sub.className = 'sub-items' + (cat.open?' open':'');
+    sub.id = 'sub-'+cat.id;
+
+    cat.items.forEach((item, ii)=>{
+      const row = document.createElement('div'); row.className='sub-item';
+      row.innerHTML = `
+        <input class="sub-name-inp" type="text" placeholder="항목 이름" value="${item.name}"
+          oninput="salCats[${ci}].items[${ii}].name=this.value; saveSalary();">
+        <div class="sub-divider"></div>
+        <input class="sub-amt-inp" type="text" inputmode="decimal" placeholder="0" value="${item.amount||''}"
+          oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'\$1'); salCats[${ci}].items[${ii}].amount=parseFloat(this.value)||0; updateSalarySummary();">
+        <span class="sub-unit-lbl">만원</span>
+        <button class="sub-del" onclick="deleteItem(${ci},${ii})">×</button>`;
+      sub.appendChild(row);
+    });
+
+    const addRow = document.createElement('div');
+    addRow.className = 'sub-add-row';
+    addRow.id = 'addrow-'+cat.id;
+    addRow.innerHTML = `
+      <input class="sub-add-name" type="text" placeholder="항목 이름 (예: 월세, 식비)">
+      <div class="sub-divider"></div>
+      <input class="sub-add-amt" type="text" inputmode="decimal" placeholder="금액">
+      <span class="sub-add-unit">만원</span>
+      <button class="sub-add-btn" onclick="addItem(${ci},'${cat.id}')">추가</button>`;
+    addRow.querySelector('.sub-add-amt').addEventListener('input', function(){
+      this.value = this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'$1');
+    });
+    addRow.querySelector('.sub-add-amt').addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(ci,cat.id); });
+    addRow.querySelector('.sub-add-name').addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(ci,cat.id); });
+
+    sub.appendChild(addRow);
+    wrap.appendChild(sub);
+    el.appendChild(wrap);
+  });
+}
+
+function toggleCat(ci){
+  salCats[ci].open = !salCats[ci].open;
+  const sub = document.getElementById('sub-'+salCats[ci].id);
+  const chev = document.getElementById('chev-'+salCats[ci].id);
+  if(sub) sub.className = 'sub-items'+(salCats[ci].open?' open':'');
+  if(chev) chev.className = 'cat-chevron'+(salCats[ci].open?' open':'');
+  saveSalary();
+}
+
+function toggleAddRow(catId){
+  const row = document.getElementById('addrow-'+catId);
+  if(!row) return;
+  row.classList.toggle('open');
+  if(row.classList.contains('open')) row.querySelector('.sub-add-name').focus();
+}
+
+function addItem(ci, catId){
+  const ar = document.getElementById('addrow-'+catId); if(!ar) return;
+  const ni = ar.querySelector('.sub-add-name'), ai = ar.querySelector('.sub-add-amt');
+  const name = ni.value.trim(), amount = parseFloat(ai.value)||0;
+  if(!name && amount<=0) return;
+  salCats[ci].items.push({id:pfUid(), name:name||'항목', amount});
+  ni.value=''; ai.value='';
+  renderSalary();
+  setTimeout(()=>{
+    const nr = document.getElementById('addrow-'+catId);
+    if(nr){ nr.classList.add('open'); nr.querySelector('.sub-add-name').focus(); }
+  }, 50);
+}
+
+function deleteItem(ci, ii){
+  salCats[ci].items.splice(ii,1);
+  renderSalary();
+}
+
+/* ── 카테고리 관리 모달 ── */
+function openCatManager(){
+  renderCatManager();
+  document.getElementById('cat-modal-backdrop').style.display = 'flex';
+}
+function closeCatManager(){
+  document.getElementById('cat-modal-backdrop').style.display = 'none';
+  renderSalary();
+}
+function renderCatManager(){
+  const el = document.getElementById('cat-manager-list');
+  el.innerHTML = '';
+  salCats.forEach((cat, ci)=>{
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--border);';
+    row.innerHTML = `
+      <input type="text" value="${cat.name}" placeholder="카테고리 이름"
+        style="flex:1;min-width:0;background:none;border:none;border-bottom:1px solid var(--border);outline:none;
+               font-family:'Pretendard',sans-serif;font-size:14px;color:var(--text);padding:4px 2px;"
+        oninput="salCats[${ci}].name=this.value; saveSalary();">
+      <span style="flex-shrink:0;font-size:12px;color:var(--sub);min-width:48px;text-align:right;">${cat.items.length}개 항목</span>
+      <button onclick="moveCat(${ci},-1)" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;color:var(--sub);cursor:pointer;font-size:13px;width:26px;height:26px;" title="위로">↑</button>
+      <button onclick="moveCat(${ci},1)" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;color:var(--sub);cursor:pointer;font-size:13px;width:26px;height:26px;" title="아래로">↓</button>
+      <button onclick="deleteCatFromManager(${ci})" style="flex-shrink:0;background:#FBEAE6;border:1px solid #E3B9AE;border-radius:6px;color:var(--bad);cursor:pointer;font-size:14px;width:26px;height:26px;line-height:1;" title="삭제">×</button>`;
+    el.appendChild(row);
+  });
+}
+function moveCat(ci, dir){
+  const ti = ci+dir; if(ti<0||ti>=salCats.length) return;
+  [salCats[ci], salCats[ti]] = [salCats[ti], salCats[ci]];
+  saveSalary();
+  renderCatManager();
+  renderSalary();
+}
+function deleteCatFromManager(ci){
+  salCats.splice(ci,1);
+  saveSalary();
+  renderCatManager();
+  renderSalary();
+}
+function addCatFromManager(){
+  const inp = document.getElementById('cat-manager-new-name');
+  const name = inp.value.trim(); if(!name) return;
+  salCats.push(makeCat(name)); saveSalary();
+  inp.value=''; renderCatManager();
+}
+document.getElementById('cat-modal-backdrop').addEventListener('click', function(e){
+  if(e.target===this) closeCatManager();
+});
+document.getElementById('cat-manager-new-name').addEventListener('keydown', e=>{
+  if(e.key==='Enter') addCatFromManager();
+});
+
+document.getElementById('sal-income').addEventListener('input', renderSalary);
+
+/* ================= 비상금 누적 추적 =================
+   매달 계산되는 "비상금"(미배분 금액)은 자동으로 사라지는 값이라,
+   실제로 모아둔 금액을 사용자가 직접 눌러서 누적시키는 구조.
+   richcalc_reserve_log_v1 = [{id, name, type:'add'|'sub', amount(만원), date}]
+*/
+let reserveLog = [];
+
+function loadReserveLog(){
+  try{
+    reserveLog = JSON.parse(localStorage.getItem('richcalc_reserve_log_v1')||'[]');
+    if(!Array.isArray(reserveLog)) reserveLog = [];
+  }catch(e){ reserveLog = []; }
+}
+function saveReserveLog(){
+  localStorage.setItem('richcalc_reserve_log_v1', JSON.stringify(reserveLog));
+}
+function reserveCumulativeTotal(){
+  return reserveLog.reduce((s,x)=> s + (x.type==='sub' ? -x.amount : x.amount), 0);
+}
+
+function renderReserveSummary(){
+  const total = reserveCumulativeTotal();
+  document.getElementById('reserve-cum-total').textContent = formatManwon(total);
+  const thisMonthWon = Math.max(0, salIncome() - totalAllocated());
+  document.getElementById('reserve-this-month').textContent = thisMonthWon>0 ? formatManwon(thisMonthWon/10000) : '—';
+}
+
+function addThisMonthToReserve(){
+  const thisMonthWon = Math.max(0, salIncome() - totalAllocated());
+  const msgBox = document.getElementById('reserve-add-msg');
+  if(thisMonthWon<=0){
+    msgBox.innerHTML = `<div class="msg warn">이번 달은 미배분(비상금)이 없어요.</div>`;
+    return;
+  }
+  const amount = thisMonthWon/10000;
+  const now = new Date();
+  const label = `${now.getMonth()+1}월 비상금`;
+  reserveLog.push({id:pfUid(), name:label, type:'add', amount, date:monthKey(now)});
+  saveReserveLog();
+  renderReserveSummary();
+  renderReserveLogList();
+  msgBox.innerHTML = `<div class="msg good">${formatManwon(amount)}을 누적 비상금에 더했어요.</div>`;
+}
+
+/* 누적 기록 관리 모달 */
+function openReserveLogModal(){
+  renderReserveLogList();
+  document.getElementById('reserve-log-modal-backdrop').style.display = 'flex';
+}
+function closeReserveLogModal(){
+  document.getElementById('reserve-log-modal-backdrop').style.display = 'none';
+  renderReserveSummary();
+}
+function addReserveLog(){
+  const nameInput = document.getElementById('reserve-log-name-input');
+  const typeInput = document.getElementById('reserve-log-type-input');
+  const amountInput = document.getElementById('reserve-log-amount-input');
+  const name = nameInput.value.trim() || (typeInput.value==='add' ? '입금' : '출금');
+  const type = typeInput.value;
+  const amount = parseFloat(amountInput.value);
+  if(!amount || amount<=0) return;
+  reserveLog.push({id:pfUid(), name, type, amount, date:monthKey(new Date())});
+  nameInput.value=''; amountInput.value='';
+  nameInput.focus();
+  saveReserveLog();
+  renderReserveLogList();
+}
+function removeReserveLog(id){
+  reserveLog = reserveLog.filter(x=>x.id!==id);
+  saveReserveLog();
+  renderReserveLogList();
+}
+function renderReserveLogList(){
+  const listEl = document.getElementById('reserve-log-list');
+  if(reserveLog.length===0){
+    listEl.innerHTML = `<div class="item-empty">아직 기록이 없어요.</div>`;
+  } else {
+    listEl.innerHTML = [...reserveLog].reverse().map(x=>`
+      <div class="item-row">
+        <div class="item-name">
+          <span class="item-color" style="background:${x.type==='add'?'#5C7A5C':'#B5533C'};"></span>
+          ${x.name}
+        </div>
+        <div class="item-amount" style="color:${x.type==='add'?'#5C7A5C':'#B5533C'};">${x.type==='add'?'+':'-'}${formatManwon(x.amount)}</div>
+        <button class="item-remove" onclick="removeReserveLog('${x.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('reserve-log-total').textContent = formatManwon(reserveCumulativeTotal());
+  renderReserveSummary();
+}
+['reserve-log-name-input','reserve-log-amount-input'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') addReserveLog(); });
+});
+document.getElementById('reserve-log-modal-backdrop').addEventListener('click', function(e){
+  if(e.target===this) closeReserveLogModal();
+});
+
+/* ================= 월급 배분기 → 포트폴리오 자산 연동 =================
+   "저축", "투자" 이름을 포함하는 카테고리의 합계를 포트폴리오 자산 항목으로 추가.
+   기존 같은 이름의 자산이 있으면 그 항목의 금액을 이번 달 값으로 갱신(중복 누적 방지),
+   없으면 새로 추가.
+*/
+function pushSalaryToPortfolio(){
+  const msgBox = document.getElementById('push-portfolio-msg');
+  const targets = salCats.filter(c => /저축|투자/.test(c.name));
+  if(targets.length===0){
+    msgBox.innerHTML = `<div class="msg warn">이름에 "저축" 또는 "투자"가 포함된 카테고리가 없어요.</div>`;
+    return;
+  }
+
+  // 이번 달에 이미 반영했는지 확인 (중복 누적 방지)
+  const thisMonthKey = monthKey(new Date());
+  const lastPush = localStorage.getItem('richcalc_last_push_month');
+  if(lastPush === thisMonthKey){
+    const proceed = confirm('이번 달에는 이미 포트폴리오에 반영했어요.\n다시 누르면 이번 달 금액이 한 번 더 더해져요.\n정말 다시 반영할까요?');
+    if(!proceed) return;
+  }
+
+  let addedCount = 0, updatedCount = 0;
+  const prefix = '[월급배분]';
+
+  // 하위 항목 단위로 자산에 "누적"으로 더한다 (덮어쓰기 아님)
+  targets.forEach(cat=>{
+    if(cat.items.length===0){
+      const amountManwon = catTotal(cat)/10000;
+      if(amountManwon<=0) return;
+      const assetName = `${prefix} ${cat.name}`;
+      const existing = pfAssets.find(a=>a.name===assetName);
+      if(existing){ existing.amount = (parseFloat(existing.amount)||0) + amountManwon; updatedCount++; }
+      else { pfAssets.push({id:pfUid(), name:assetName, amount:amountManwon}); addedCount++; }
+    } else {
+      cat.items.forEach(item=>{
+        const amountManwon = parseFloat(item.amount)||0;
+        if(amountManwon<=0) return;
+        const assetName = `${prefix} ${cat.name} · ${item.name}`;
+        const existing = pfAssets.find(a=>a.name===assetName);
+        if(existing){ existing.amount = (parseFloat(existing.amount)||0) + amountManwon; updatedCount++; }
+        else { pfAssets.push({id:pfUid(), name:assetName, amount:amountManwon}); addedCount++; }
+      });
+    }
+  });
+
+  localStorage.setItem('richcalc_last_push_month', thisMonthKey);
+  savePortfolio();
+  renderPortfolio();
+
+  // 반영 시점의 투자 축적 스냅샷도 함께 기록 (이 시점의 "누적 총액" 기준)
+  saveInvestSnapshot();
+
+  msgBox.innerHTML = `<div class="msg good">포트폴리오 자산에 누적으로 더했어요. (신규 ${addedCount}건 · 기존에 더함 ${updatedCount}건) · 투자 축적 그래프에도 기록됐어요.</div>`;
+}
+
+/* ================= 저축·투자 축적 히스토리 =================
+   "저축"/"투자" 카테고리의 하위 항목별 금액을, 반영(push) 시점마다 기록해
+   시간에 따라 어떻게 쌓여왔는지 보여주는 누적 그래프.
+   richcalc_invest_history_v1 = [{month, items:[{name, amount(만원)}], total}]
+*/
+let investHistory = [];
+
+function loadInvestHistory(){
+  try{
+    investHistory = JSON.parse(localStorage.getItem('richcalc_invest_history_v1')||'[]');
+    if(!Array.isArray(investHistory)) investHistory = [];
+  }catch(e){ investHistory = []; }
+}
+function saveInvestHistoryStorage(){
+  localStorage.setItem('richcalc_invest_history_v1', JSON.stringify(investHistory));
+}
+
+function saveInvestSnapshot(){
+  const targets = salCats.filter(c => /저축|투자/.test(c.name));
+  const items = [];
+  targets.forEach(cat=>{
+    if(cat.items.length===0){
+      const amt = catTotal(cat)/10000;
+      if(amt>0) items.push({name:cat.name, amount:amt});
+    } else {
+      cat.items.forEach(item=>{
+        const amt = parseFloat(item.amount)||0;
+        if(amt>0) items.push({name:`${cat.name} · ${item.name}`, amount:amt});
+      });
+    }
+  });
+  const total = items.reduce((s,x)=>s+x.amount,0);
+  const key = monthKey(new Date());
+  const entry = {month:key, items, total};
+  const idx = investHistory.findIndex(h=>h.month===key);
+  if(idx>=0) investHistory[idx] = entry; else investHistory.push(entry);
+  investHistory.sort((a,b)=>a.month.localeCompare(b.month));
+  if(investHistory.length > HISTORY_MAX_MONTHS) investHistory = investHistory.slice(investHistory.length-HISTORY_MAX_MONTHS);
+  saveInvestHistoryStorage();
+  renderInvestHistory();
+}
+
+function removeInvestSnapshot(month){
+  investHistory = investHistory.filter(h=>h.month!==month);
+  saveInvestHistoryStorage();
+  renderInvestHistory();
+}
+
+let investHistoryChart;
+function renderInvestHistory(){
+  const wrap = document.getElementById('invest-history-wrap');
+  if(!wrap) return; // 포트폴리오 탭 HTML이 아직 없으면 스킵
+  const listEl = document.getElementById('invest-history-list');
+  const emptyEl = document.getElementById('invest-history-empty');
+
+  if(investHistory.length===0){
+    emptyEl.style.display = 'block';
+    listEl.innerHTML = '';
+    const ctx = document.getElementById('invest-history-chart');
+    if(investHistoryChart){ investHistoryChart.destroy(); investHistoryChart=null; }
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  // 최근 기록 하나의 항목별 구성 리스트
+  const latest = investHistory[investHistory.length-1];
+  listEl.innerHTML = latest.items.map(x=>`
+    <div class="item-row">
+      <div class="item-name">${x.name}</div>
+      <div class="item-amount">${formatManwon(x.amount)}</div>
+    </div>
+  `).join('') || `<div class="item-empty">기록된 항목이 없어요.</div>`;
+
+  const ctx = document.getElementById('invest-history-chart');
+  if(investHistoryChart) investHistoryChart.destroy();
+  investHistoryChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: investHistory.map(h=>monthLabel(h.month)),
+      datasets:[{
+        label:'저축·투자 누적액',
+        data: investHistory.map(h=>h.total),
+        borderColor:'#8B6F47',
+        backgroundColor:'rgba(139,111,71,0.14)',
+        fill:true, tension:0.3, pointRadius:3
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:(v)=>formatManwon(v)}}}
+    }
+  });
+}
+
+/* ================= 계산기 탭 입력값: 초기 복원 + 이벤트 연결 ================= */
+function loadCalcInputs(){
+  const saved = getSavedCalcInputs();
+  const netAsset = pfAssets.reduce((sum,a)=>sum+a.amount,0) - pfDebts.reduce((sum,d)=>sum+d.amount,0);
+
+  CALC_ALL_INPUT_IDS.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(saved[id] !== undefined && saved[id] !== ''){
+      el.value = saved[id];
+    } else if(PRESENT_ASSET_INPUT_IDS.includes(id) && netAsset > 0){
+      el.value = netAsset;
+    }
+  });
+}
+
+CALC_ALL_INPUT_IDS.forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', ()=>saveCalcInput(id));
+});
+
+/* ================= 전체 초기화 (실행 순서 중요) ================= */
+async function initApp(){
+  // 1) 노션에서 데이터를 먼저 받아와 localStorage를 채운다 (실패해도 로컬 값으로 계속 진행)
+  await loadFromNotion();
+
+  // 2) 그 다음 기존 초기화 로직을 그대로 실행
+  loadPortfolio();           // 포트폴리오 자산/부채 먼저 불러오기 (현재자산 기본값 계산에 필요)
+  loadCalcInputs();          // 계산기 입력값 복원 (없으면 포트폴리오 순자산으로 기본 채움)
+
+  // 인출률 프리셋 버튼 활성 상태를 복원된 값에 맞춰 동기화
+  (function syncFireWithdrawPreset(){
+    const val = document.getElementById('fire-withdraw').value;
+    document.querySelectorAll('#fire-withdraw-presets .preset-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.val === val);
+    });
+  })();
+
+  calcFuture();
+  calcPeriod();
+  calcMonthly();
+  calcFire();
+
+  renderPortfolio();
+  loadPortfolioHistory();
+  renderPortfolioHistory();
+  document.getElementById('pf-snapshot-month').value = monthKey(new Date());
+
+  loadSalary();
+  renderSalary();
+  loadReserveLog();
+  renderReserveSummary();
+  loadInvestHistory();
+  renderInvestHistory();
+}
+
+initApp();
+</script>
+</body>
+</html>

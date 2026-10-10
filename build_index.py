@@ -16,7 +16,7 @@ import pathlib
 import re
 from urllib.parse import quote
 
-사이트_제목 = "도구 모음"
+사이트_제목 = "유령의 도구 모음"
 기본_분류 = "기타"
 제외_폴더 = {".git", ".github", "node_modules"}
 

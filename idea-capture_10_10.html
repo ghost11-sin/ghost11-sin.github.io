@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>아이디어 캡처</title>
+<meta name="description" content="사진을 찍거나 골라서 아이디어 박스로 보내요">
+<meta name="icon" content="📸">
+<meta name="category" content="아이디어">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<style>
+  @font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Regular.woff2') format('woff2');
+    font-display: swap;
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Bold.woff2') format('woff2');
+    font-display: swap;
+    font-weight: 700;
+  }
+
+  :root {
+    --bg: #000000;
+    --fg: #ffffff;
+    --line: #2a2a2a;
+    --mute: #6e6e6e;
+    --danger: #ff4d4d;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Pretendard', -apple-system, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  header {
+    padding: 28px 24px 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  header .count {
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--mute);
+    font-variant-numeric: tabular-nums;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+  }
+
+  /* ---- idle state ---- */
+  #idle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    width: 100%;
+  }
+
+  .shutter {
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    border: 1.5px solid var(--fg);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .shutter:active {
+    transform: scale(0.94);
+  }
+
+  .shutter::before {
+    content: '';
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    background: var(--fg);
+    transition: transform 0.15s ease;
+  }
+
+  .shutter:active::before {
+    transform: scale(0.9);
+  }
+
+  .hint {
+    font-size: 13px;
+    color: var(--mute);
+    text-align: center;
+    line-height: 1.6;
+    max-width: 320px;
+  }
+
+  #fileInput, #albumInput { display: none; }
+
+  .link-btn {
+    margin-top: -16px;
+    padding: 8px 4px;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 13px;
+    color: var(--mute);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .link-btn:active { opacity: 0.7; }
+
+  /* ---- preview state ---- */
+  #preview {
+    display: none;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .frame {
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 3 / 4;
+    border: 1px solid var(--line);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0a0a;
+  }
+
+  .frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .note {
+    width: 100%;
+    max-width: 420px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    color: var(--fg);
+    font-family: 'Pretendard', sans-serif;
+    font-size: 14px;
+    padding: 10px 2px;
+    outline: none;
+  }
+
+  .note::placeholder { color: var(--mute); }
+  .note:focus { border-bottom-color: var(--fg); }
+
+  .tags {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tag-chip {
+    padding: 8px 14px;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mute);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: all 0.12s ease;
+  }
+
+  .tag-chip.selected {
+    border-color: var(--fg);
+    background: var(--fg);
+    color: #000;
+  }
+
+  .tag-chip:active {
+    opacity: 0.7;
+  }
+
+  .actions {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  button.action {
+    flex: 1;
+    padding: 15px 0;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid var(--fg);
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: opacity 0.15s ease, background 0.15s ease;
+  }
+
+  button.action.primary {
+    background: var(--fg);
+    color: #000;
+  }
+
+  button.action:disabled {
+    opacity: 0.4;
+  }
+
+  button.action:not(:disabled):active {
+    opacity: 0.7;
+  }
+
+  /* ---- status state ---- */
+  #status {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+  }
+
+  #status .mark {
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-size: 40px;
+    line-height: 1;
+  }
+
+  #status .msg {
+    font-size: 14px;
+    color: var(--mute);
+    max-width: 260px;
+    line-height: 1.6;
+  }
+
+  #status .msg.err { color: var(--danger); }
+
+  footer {
+    padding: 18px 24px 26px;
+    text-align: center;
+  }
+
+  footer span {
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--line);
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>아이디어 캡처</h1>
+  <span class="count" id="pendingCount">0</span>
+</header>
+
+<main>
+
+  <div id="idle">
+    <button class="shutter" id="shutterBtn" aria-label="사진 촬영"></button>
+    <p class="hint">버튼을 누르면 카메라가 열립니다.<br>찍거나 고른 사진은 아이디어 박스로 보내집니다.</p>
+    <button type="button" class="link-btn" id="albumBtn">앨범에서 선택</button>
+    <input type="file" id="fileInput" accept="image/*" capture="environment">
+    <input type="file" id="albumInput" accept="image/*">
+  </div>
+
+  <div id="preview">
+    <div class="frame"><img id="previewImg" alt="촬영된 사진"></div>
+    <div class="tags" id="tagsContainer"></div>
+    <input type="text" class="note" id="noteInput" placeholder="메모 (선택)">
+    <div class="actions">
+      <button class="action" id="retakeBtn">다시 찍기</button>
+      <button class="action primary" id="saveBtn">저장</button>
+    </div>
+  </div>
+
+  <div id="status">
+    <div class="mark" id="statusMark">·</div>
+    <p class="msg" id="statusMsg"></p>
+  </div>
+
+</main>
+
+<footer><span>CONNECTED TO NOTION VIA WORKER</span></footer>
+
+<script>
+  const idleView = document.getElementById('idle');
+  const previewView = document.getElementById('preview');
+  const statusView = document.getElementById('status');
+
+  const shutterBtn = document.getElementById('shutterBtn');
+  const fileInput = document.getElementById('fileInput');
+  const previewImg = document.getElementById('previewImg');
+  const tagsContainer = document.getElementById('tagsContainer');
+  const noteInput = document.getElementById('noteInput');
+  const retakeBtn = document.getElementById('retakeBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const pendingCount = document.getElementById('pendingCount');
+  const statusMark = document.getElementById('statusMark');
+  const statusMsg = document.getElementById('statusMsg');
+
+  const WORKER_ENDPOINT = 'https://leveldesign-ideas.lee34344.workers.dev'; // 배포된 Worker 주소
+
+  let currentFile = null;
+  let savedCount = 0;
+  let availableTags = [];
+  let selectedTags = new Set();
+
+  // 페이지 로드 시 노션 DB의 최신 태그 옵션을 받아와서 칩으로 렌더링
+  async function loadTags() {
+    try {
+      const res = await fetch(WORKER_ENDPOINT, { method: 'GET' });
+      const data = await res.json();
+      availableTags = data.tags || [];
+    } catch (err) {
+      availableTags = [];
+    }
+    renderTags();
+  }
+
+  function renderTags() {
+    tagsContainer.innerHTML = '';
+    availableTags.forEach(tag => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'tag-chip';
+      chip.textContent = tag;
+      if (selectedTags.has(tag)) chip.classList.add('selected');
+      chip.addEventListener('click', () => {
+        if (selectedTags.has(tag)) {
+          selectedTags.delete(tag);
+          chip.classList.remove('selected');
+        } else {
+          selectedTags.add(tag);
+          chip.classList.add('selected');
+        }
+      });
+      tagsContainer.appendChild(chip);
+    });
+  }
+
+  loadTags();
+
+  function showView(view) {
+    [idleView, previewView, statusView].forEach(v => v.style.display = 'none');
+    view.style.display = 'flex';
+  }
+
+  const albumBtn = document.getElementById('albumBtn');
+  const albumInput = document.getElementById('albumInput');
+  let previewUrl = null;
+
+  function resetInputs() {
+    fileInput.value = '';
+    albumInput.value = '';
+  }
+
+  // 미리보기용 임시 주소를 정리해서, 사진을 여러 장 찍어도 메모리가 쌓이지 않게 함
+  function releasePreview() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+    }
+  }
+
+  shutterBtn.addEventListener('click', () => fileInput.click());
+  albumBtn.addEventListener('click', () => albumInput.click());
+
+  // 사진/이미지를 JPEG로 리사이즈+압축 (긴 변 1600px, 품질 80%) —
+  // 단축어의 "이미지 변환" 단계와 동일한 역할. 노션 무료 플랜 5MB 제한을
+  // 넘기지 않도록 전송 전에 항상 거칩니다.
+  async function compressImage(file, maxDim = 1600, quality = 0.8) {
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+    if (width > maxDim || height > maxDim) {
+      const scale = maxDim / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+    if (bitmap.close) bitmap.close();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) throw new Error('압축 실패');
+    return new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+
+    statusMark.textContent = '·';
+    statusMsg.textContent = '사진을 준비하는 중…';
+    statusMsg.classList.remove('err');
+    showView(statusView);
+
+    try {
+      currentFile = await compressImage(file);
+    } catch (err) {
+      currentFile = null;
+      resetInputs();
+      statusMark.textContent = '×';
+      statusMsg.textContent = '사진을 처리하지 못했어요. 다른 사진으로 다시 시도해 주세요.';
+      statusMsg.classList.add('err');
+      setTimeout(() => showView(idleView), 1800);
+      return;
+    }
+
+    releasePreview();
+    previewUrl = URL.createObjectURL(currentFile);
+    previewImg.src = previewUrl;
+    noteInput.value = '';
+    selectedTags = new Set();
+    // 처음에 태그를 못 불러왔다면(인터넷이 불안정했을 때) 여기서 다시 시도
+    if (availableTags.length === 0) loadTags();
+    else renderTags();
+    showView(previewView);
+  }
+
+  fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+  albumInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+  retakeBtn.addEventListener('click', () => {
+    currentFile = null;
+    resetInputs();
+    releasePreview();
+    showView(idleView);
+  });
+
+  // -----------------------------------------------------------------
+  // 스크린샷 수집 단축어와 같은 Worker를 공유합니다.
+  // 태그는 쉼표로 join해서 보내고, Worker가 노션 "태그" multi-select
+  // 속성에 그대로 넣어줍니다 (같은 규칙을 단축어 쪽도 씁니다).
+  // -----------------------------------------------------------------
+  async function sendToNotion(file, note, tags) {
+    const form = new FormData();
+    form.append('image', file);
+    form.append('note', note || '');
+    form.append('tags', tags.join(','));
+
+    const res = await fetch(WORKER_ENDPOINT, { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || '전송 실패');
+    return data;
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    if (!currentFile) return;
+    const file = currentFile;
+    const note = noteInput.value.trim();
+    const tags = Array.from(selectedTags);
+
+    saveBtn.disabled = true;
+    retakeBtn.disabled = true;
+    statusMark.textContent = '·';
+    statusMsg.textContent = '';
+    statusMsg.classList.remove('err');
+    showView(statusView);
+
+    try {
+      await sendToNotion(file, note, tags);
+      savedCount += 1;
+      pendingCount.textContent = savedCount;
+      statusMark.textContent = '✓';
+      statusMsg.textContent = '아이디어 박스에 저장했습니다.';
+      setTimeout(() => {
+        currentFile = null;
+        resetInputs();
+        releasePreview();
+        saveBtn.disabled = false;
+        retakeBtn.disabled = false;
+        showView(idleView);
+      }, 1000);
+    } catch (err) {
+      statusMark.textContent = '×';
+      statusMsg.textContent = '전송에 실패했습니다. 다시 시도해 주세요.';
+      statusMsg.classList.add('err');
+      saveBtn.disabled = false;
+      retakeBtn.disabled = false;
+      setTimeout(() => showView(previewView), 1400);
+    }
+  });
+</script>
+
+</body>
+</html>

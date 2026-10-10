@@ -309,6 +309,37 @@
     .cat-header{flex-wrap:wrap;}
     .cat-name-inp{flex:1 1 100px;}
   }
+
+  /* ===== 모바일 보정 ===== */
+  /* 탭 이름이 서로 겹치지 않게: 줄어들지 않고, 옆으로 밀어서 볼 수 있게 한다 */
+  .main-tab, .sub-tab{flex:0 0 auto;white-space:nowrap;}
+  .main-tabs, .sub-tabs{scrollbar-width:none;}
+  .main-tabs::-webkit-scrollbar, .sub-tabs::-webkit-scrollbar{display:none;}
+
+  /* 설명 글 + 버튼 줄 */
+  .head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;}
+  .head-row > p{flex:1 1 0;}
+  .head-row .header-btn{flex:0 0 auto;}
+
+  @media (max-width:600px){
+    /* 화면 아래 브라우저 막대에 마지막 내용이 가리지 않게 */
+    .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+  }
+  @media (max-width:480px){
+    /* 버튼은 내용 크기만큼만 (제목 옆 작은 버튼이 제목을 짓누르지 않게) */
+    .header-btn{width:auto;}
+    .head-row{flex-direction:column;align-items:stretch;gap:10px;}
+    .head-row .header-btn{width:100%;}
+
+    .sub-tab{padding:8px 12px;font-size:13px;}
+
+    /* 자산·부채 추가 줄: 이름 / 금액+단위 / 추가 버튼 */
+    .add-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;}
+    .add-row input[type=text]{grid-column:1 / -1;}
+    .add-row input[type=number]{grid-column:1;}
+    .add-row .unit-inline{grid-column:2;}
+    .add-row .add-btn{grid-column:1 / -1;width:100%;}
+  }
 </style>
 </head>
 <body>
@@ -560,7 +591,7 @@
 
   <!-- ================= 1. 월급 배분기 ================= -->
   <section class="panel active" id="panel-salary">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;">
+    <div class="head-row">
       <p class="result-sub" style="margin:0;">이번 달 들어온 돈을 용도별로 배분하세요.</p>
       <button class="header-btn" onclick="openCatManager()" style="flex-shrink:0;">⚙ 카테고리 관리</button>
     </div>
@@ -894,6 +925,7 @@ document.querySelectorAll('.main-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
+    btn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
     document.querySelectorAll('.panel').forEach(p=>p.style.display='none');
     document.getElementById('panel-'+btn.dataset.main).style.display='block';
   });
@@ -903,6 +935,7 @@ document.querySelectorAll('.sub-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
+    btn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
     document.querySelectorAll('.sub-panel').forEach(p=>p.style.display='none');
     document.getElementById('sub-'+btn.dataset.sub).style.display='block';
   });

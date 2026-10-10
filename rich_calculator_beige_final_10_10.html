@@ -340,6 +340,32 @@
     .add-row .unit-inline{grid-column:2;}
     .add-row .add-btn{grid-column:1 / -1;width:100%;}
   }
+
+  /* ===== 접속 비밀번호 입력창 ===== */
+  .key-overlay{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(43,38,32,0.45);}
+  .key-box{width:100%;max-width:340px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 12px 40px rgba(43,38,32,0.18);}
+  .key-title{margin:0 0 6px;font-family:var(--font-heading);font-size:18px;font-weight:700;}
+  .key-desc{margin:0 0 14px;font-size:13px;color:var(--sub);}
+  .key-box input{width:100%;padding:12px;font-size:16px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);}
+  .key-actions{display:flex;gap:8px;margin-top:14px;}
+  .key-actions button{flex:1;padding:12px;font-size:14px;font-weight:700;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--sub);cursor:pointer;}
+  .key-actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  #sync-status.clickable{cursor:pointer;text-decoration:underline;}
+
+  /* ===== 보기 전용 ===== */
+  body.view-only input:not(#key-input),
+  body.view-only textarea,
+  body.view-only select{pointer-events:none;opacity:.85;}
+  body.view-only .btn-primary,
+  body.view-only .preset-btn,
+  body.view-only .add-btn,
+  body.view-only .snapshot-btn,
+  body.view-only .header-btn,
+  body.view-only .cat-add-item-btn,
+  body.view-only .sub-add-btn,
+  body.view-only .sub-del,
+  body.view-only .item-remove{pointer-events:none;opacity:.4;}
+  body.view-only #sync-status{font-size:13px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -705,6 +731,17 @@
 
 </div>
 
+<div id="key-modal" class="key-overlay" role="dialog" aria-modal="true" aria-labelledby="key-title">
+  <div class="key-box">
+    <p class="key-title" id="key-title">🔒 접속 비밀번호</p>
+    <p class="key-desc" id="key-desc">노션과 연결하려면 접속 비밀번호를 입력해 주세요.</p>
+    <input type="password" id="key-input" autocomplete="current-password" placeholder="비밀번호">
+    <div class="key-actions">
+      <button type="button" id="key-cancel">나중에</button>
+      <button type="button" id="key-ok" class="primary">확인</button>
+    </div>
+  </div>
+</div>
 <script>
 /* ============================================================
    노션 동기화 레이어
@@ -721,13 +758,66 @@
 const NOTION_WORKER_URL = "https://budget-notion-proxy.lee34344.workers.dev";
 
 // 접속 비밀번호: 코드에는 적지 않고, 처음 한 번 입력받아 이 기기의 브라우저에만 저장해요.
-// 틀리면 지우고 다시 물어봐요.
+// (노션 임베드 안에서는 브라우저 기본 입력창이 막혀서, 페이지 안에 입력창을 직접 띄워요)
 const ACCESS_KEY_STORAGE = 'richcalc_access_key';
+let memoryKey = '';             // 브라우저 저장이 막힌 곳에서는 이번 접속 동안만 기억해요
+let accessKeyDeclined = false;  // '나중에'를 누르면 이번 접속에서는 더 묻지 않아요
+let keyPromptPromise = null;
+let viewOnly = false;           // true면 '보기 전용' (수정·저장 모두 막아요)
+
+function readAccessKey(){
+  try{ return localStorage.getItem(ACCESS_KEY_STORAGE) || memoryKey; }catch(e){ return memoryKey; }
+}
+function saveAccessKey(key){
+  memoryKey = key;
+  try{ localStorage.setItem(ACCESS_KEY_STORAGE, key); }catch(e){}
+}
+function forgetAccessKey(){
+  memoryKey = '';
+  try{ localStorage.removeItem(ACCESS_KEY_STORAGE); }catch(e){}
+}
+
+// 비밀번호 입력창을 띄우고, 입력한 값을 돌려줘요. ('나중에'를 누르면 빈 문자열)
+function askAccessKey(message){
+  if(keyPromptPromise) return keyPromptPromise;
+  keyPromptPromise = new Promise(resolve=>{
+    const modal = document.getElementById('key-modal');
+    const input = document.getElementById('key-input');
+    document.getElementById('key-desc').textContent = message || '노션과 연결하려면 접속 비밀번호를 입력해 주세요.';
+    input.value = '';
+    modal.style.display = 'flex';
+    setTimeout(()=>input.focus(), 50);
+    const finish = (value)=>{
+      modal.style.display = 'none';
+      keyPromptPromise = null;
+      resolve(value);
+    };
+    document.getElementById('key-ok').onclick = ()=>finish(input.value);
+    document.getElementById('key-cancel').onclick = ()=>finish('');
+    input.onkeydown = (e)=>{
+      if(e.key === 'Enter') finish(input.value);
+      else if(e.key === 'Escape') finish('');
+    };
+  });
+  return keyPromptPromise;
+}
+
+function noKeyError(){
+  const e = new Error('접속 비밀번호가 필요해요');
+  e.code = 'NO_KEY';
+  return e;
+}
+
 async function workerFetch(path, options, retried){
-  let key = localStorage.getItem(ACCESS_KEY_STORAGE);
+  let key = readAccessKey();
   if(!key){
-    key = window.prompt('접속 비밀번호를 입력해 주세요. (이 기기에 저장돼요)') || '';
-    if(key) localStorage.setItem(ACCESS_KEY_STORAGE, key);
+    if(accessKeyDeclined) throw noKeyError();
+    key = await askAccessKey(retried ? '비밀번호가 맞지 않아요. 다시 입력해 주세요.' : '');
+    if(!key){
+      accessKeyDeclined = true;
+      throw noKeyError();
+    }
+    saveAccessKey(key);
   }
   const opts = options || {};
   const res = await fetch(NOTION_WORKER_URL + path, {
@@ -735,9 +825,9 @@ async function workerFetch(path, options, retried){
     // 한글 같은 글자도 보낼 수 있게 인코딩해서 보내요 (워커가 되돌려 읽어요)
     headers: { ...(opts.headers || {}), 'X-Access-Key': encodeURIComponent(key) },
   });
-  if(res.status === 401 && !retried){
-    localStorage.removeItem(ACCESS_KEY_STORAGE);
-    return workerFetch(path, options, true);
+  if(res.status === 401){
+    forgetAccessKey();                       // 틀린 비밀번호는 지워요
+    if(!retried) return workerFetch(path, options, true);
   }
   return res;
 }
@@ -760,8 +850,48 @@ let notionSyncQueued = false;
 
 function setSyncStatus(text, color){
   const el = document.getElementById('sync-status');
-  if(el){ el.textContent = text; el.style.color = color || 'var(--sub)'; }
+  if(el){ el.textContent = text; el.style.color = color || 'var(--sub)'; el.classList.remove('clickable'); }
 }
+
+// 비밀번호 없이 '나중에'를 눌렀을 때: 수정은 막고 확인만 할 수 있는 '보기 전용'으로 바꿔요.
+// 이 기기에 이미 저장된 값만 보여줘요. (노션에서 새로 불러오려면 비밀번호가 필요해요)
+function setLockedStatus(){
+  viewOnly = true;
+  document.body.classList.add('view-only');
+  let hasLocal = false;
+  try{ hasLocal = SYNCED_STORAGE_KEYS.some(k=>localStorage.getItem(k) !== null); }catch(e){}
+  setSyncStatus(hasLocal
+    ? '👀 보기 전용 · 이 기기에 저장된 값이에요 (수정하려면 여기를 눌러 비밀번호 입력)'
+    : '👀 보기 전용 · 이 기기에 저장된 데이터가 없어요 (불러오려면 여기를 눌러 비밀번호 입력)', '#B98A2E');
+  const el = document.getElementById('sync-status');
+  if(el) el.classList.add('clickable');
+}
+
+// 보기 전용 상태에서 입력·붙여넣기·끌어놓기를 막아요 (화면에서 못 누르게 하는 것과 별개로 한 번 더)
+['keydown','beforeinput','paste','cut','drop'].forEach(type=>{
+  document.addEventListener(type, e=>{
+    if(!viewOnly) return;
+    const t = e.target;
+    if(!t || !t.matches || !t.matches('input,textarea,select')) return;
+    if(t.closest('#key-modal')) return;
+    if(type === 'keydown' && e.key === 'Tab') return;
+    e.preventDefault();
+  }, true);
+});
+
+// 상태 줄을 누르면 비밀번호를 입력받아서, 맞으면 새로고침해서 수정 가능한 상태로 돌아가요
+(function(){
+  const el = document.getElementById('sync-status');
+  if(el) el.addEventListener('click', async ()=>{
+    if(!viewOnly) return;
+    const key = await askAccessKey('수정하려면 접속 비밀번호를 입력해 주세요.');
+    if(key){
+      saveAccessKey(key);
+      accessKeyDeclined = false;
+      location.reload();
+    }
+  });
+})();
 
 // localStorage에 있는 모든 동기화 대상 키를 모아 하나의 객체로 만든다
 function collectAllLocalData(){
@@ -785,6 +915,7 @@ function applyBundleToLocalStorage(bundle){
 
 // 실제로 노션에 저장을 요청하는 함수 (디바운스 타이머가 호출)
 async function flushToNotion(){
+  if(viewOnly) return;   // 보기 전용: 노션으로 보내지 않아요
   if(notionSyncInFlight){
     notionSyncQueued = true; // 지금 요청이 진행 중이면, 끝난 뒤 한 번 더 실행되도록 예약
     return;
@@ -805,7 +936,8 @@ async function flushToNotion(){
       setSyncStatus('⚠ 저장 실패: ' + (data.error||'알 수 없는 오류'), '#B5533C');
     }
   }catch(err){
-    setSyncStatus('⚠ 저장 실패 (네트워크): ' + err.message, '#B5533C');
+    if(err && err.code === 'NO_KEY') setLockedStatus();
+    else setSyncStatus('⚠ 저장 실패 (네트워크): ' + err.message, '#B5533C');
   }finally{
     notionSyncInFlight = false;
     if(notionSyncQueued){
@@ -837,13 +969,15 @@ async function loadFromNotion(){
       setSyncStatus('⚠ 불러오기 실패: ' + (data.error||'알 수 없는 오류'), '#B5533C');
     }
   }catch(err){
-    setSyncStatus('⚠ 노션 연결 실패 — 이 기기에 저장된 값으로 계속 진행해요', '#B5533C');
+    if(err && err.code === 'NO_KEY') setLockedStatus();
+    else setSyncStatus('⚠ 노션 연결 실패 — 이 기기에 저장된 값으로 계속 진행해요', '#B5533C');
   }
 }
 
 // localStorage.setItem을 감싸서, 이 앱이 값을 쓸 때마다 자동으로 동기화 예약이 걸리게 한다
 const _originalSetItem = Storage.prototype.setItem.bind(localStorage);
 localStorage.setItem = function(key, value){
+  if(viewOnly && SYNCED_STORAGE_KEYS.includes(key)) return;   // 보기 전용: 저장하지 않아요
   _originalSetItem(key, value);
   if(SYNCED_STORAGE_KEYS.includes(key)){
     scheduleNotionSync();

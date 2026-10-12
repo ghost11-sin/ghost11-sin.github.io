@@ -1084,9 +1084,23 @@ function updateVolume() {
 
 // ── NOTION 설정 ──
 const NOTION_CONFIG = {
-  workerUrl:  'https://exercise-log.lee34344.workers.dev'
+  workerUrl:  'https://exercise-log.lee34344.workers.dev',
   // 토큰은 Cloudflare Workers 환경 변수에 저장되어 있어서 여기 없어도 돼요
 };
+
+// 한국 시간(KST) 기준 오늘 날짜 — 기기 시간대와 상관없이 항상 한국 날짜로 계산
+function kstInfo() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const get = type => parts.find(p => p.type === type).value;
+  const y = Number(get('year')), m = Number(get('month')), d = Number(get('day'));
+  const weekday = ['일','월','화','수','목','금','토'][new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return {
+    date:  `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+    title: `${y}년 ${m}월 ${d}일 (${weekday})`
+  };
+}
 
 async function saveToNotion(data) {
   const statusEl = document.getElementById('notionStatus');
@@ -1098,6 +1112,7 @@ async function saveToNotion(data) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'save_weight',
         data
       })
     });
@@ -1317,9 +1332,10 @@ function endWorkout() {
   const { rows: notionRows, grand: notionGrand } = getVolumeData();
   const notionRoutineLabel = { push:'PUSH DAY', leg:'LEG DAY', pull:'PULL DAY' };
   const notionCondLabel    = { good:'GOOD', soso:'SOSO', bad:'BAD' };
+  const kst = kstInfo(); // 저장하는 순간의 한국 날짜 (자정 넘겨 켜둬도 정확)
   saveToNotion({
-    title:     todayStr,
-    date:      now.toISOString().split('T')[0],
+    title:     kst.title,
+    date:      kst.date,
     routine:   notionRoutineLabel[state.routine] || '미선택',
     cond:      notionCondLabel[state.cond] || '미선택',
     duration:  swGetFormatted(),

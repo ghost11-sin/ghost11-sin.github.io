@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>유산소 기록</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --surface2: #1a1a1a;
+    --border: #272727;
+    --accent: #e8ff00;
+    --accent2: #ff4444;
+    --text: #f0f0f0;
+    --muted: #555;
+    --muted2: #888;
+    --good: #39ff14;
+    --soso: #ffa500;
+    --bad: #ff4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* 상단 헤더 */
+  .top-header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 22px 20px 18px;
+    text-align: center;
+  }
+  .top-label { font-size: 11px; letter-spacing: 2px; color: var(--muted2); margin-bottom: 6px; font-weight: 500; }
+  .top-date  { font-size: 24px; font-weight: 900; color: var(--accent); }
+
+  .content { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
+  .section { margin-bottom: 28px; }
+  .section-label { font-size: 11px; letter-spacing: 2px; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
+
+  /* 기록 카드 */
+  .entry-list { display: flex; flex-direction: column; gap: 12px; }
+  .entry-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    animation: fadeUp 0.25s ease both;
+  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .type-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .type-chip {
+    padding: 9px 13px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--muted2);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px; font-weight: 700;
+    border-radius: 6px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .type-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .type-chip.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .del-card-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--muted2); width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 4px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .del-card-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .perf-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .perf-input {
+    flex: 1; min-width: 0;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 22px; font-weight: 900; text-align: center;
+    padding: 12px 8px; border-radius: 6px; outline: none;
+    transition: border-color 0.15s; -moz-appearance: textfield;
+  }
+  .perf-input:focus { border-color: var(--accent); }
+  .perf-input::placeholder { color: var(--muted); font-size: 14px; font-weight: 400; }
+  .perf-input::-webkit-inner-spin-button { display: none; }
+  .perf-unit { font-size: 16px; font-weight: 700; color: var(--muted2); min-width: 30px; }
+
+  /* 지난 기록 */
+  .past-record {
+    display: none; margin-top: 12px; padding: 8px 10px;
+    background: var(--surface2); border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0; font-size: 12px; color: var(--muted2);
+    line-height: 1.8; font-weight: 300;
+  }
+  .past-record.visible { display: block; }
+  .past-label { font-size: 10px; letter-spacing: 1px; color: var(--accent); font-weight: 700; margin-bottom: 2px; }
+  .past-date { color: var(--muted); font-size: 11px; margin-right: 8px; }
+
+  .add-entry-btn {
+    width: 100%; padding: 13px; margin-top: 12px;
+    border: 1.5px dashed var(--border); background: none;
+    color: var(--muted); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s;
+  }
+  .add-entry-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 메모 */
+  .memo-input {
+    width: 100%; background: var(--surface);
+    border: 1.5px solid var(--border); color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 16px; padding: 12px 14px; border-radius: 8px;
+    outline: none; resize: none; min-height: 80px;
+    transition: border-color 0.15s; line-height: 1.7; font-weight: 300;
+  }
+  .memo-input:focus { border-color: var(--accent); }
+  .memo-input::placeholder { color: var(--muted); font-size: 14px; }
+
+  /* 종료 버튼 */
+  .end-btn {
+    width: 100%; padding: 16px;
+    background: var(--accent2); color: #fff;
+    border: none; font-family: 'Noto Sans KR', sans-serif;
+    font-size: 16px; font-weight: 700; letter-spacing: 2px;
+    cursor: pointer; border-radius: 8px; transition: all 0.15s;
+  }
+  .end-btn:hover { background: #ff6666; transform: translateY(-1px); }
+  .end-btn:active { transform: translateY(0); }
+
+  /* 종료 확인 */
+  .confirm-overlay, .popup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .confirm-overlay { z-index: 200; }
+  .popup-overlay   { z-index: 100; }
+  .confirm-overlay.visible, .popup-overlay.visible { display: flex; }
+
+  .confirm-box {
+    background: var(--surface); border: 2px solid var(--accent2);
+    border-radius: 12px; padding: 28px 24px;
+    width: 100%; max-width: 320px; text-align: center;
+  }
+  .confirm-title { font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+  .confirm-desc  { font-size: 13px; color: var(--muted2); margin-bottom: 24px; line-height: 1.6; font-weight: 300; }
+  .confirm-btns  { display: flex; gap: 10px; }
+  .confirm-cancel, .confirm-ok, .popup-close-btn, .popup-retry-btn {
+    flex: 1; padding: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; border-radius: 6px; transition: all 0.15s;
+  }
+  .confirm-cancel { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+  .confirm-cancel:hover { border-color: var(--muted2); }
+  .confirm-ok { background: var(--accent2); color: #fff; border: none; }
+  .confirm-ok:hover { background: #ff6666; }
+
+  /* 완료 팝업 */
+  .popup {
+    background: var(--surface); border: 2px solid var(--accent);
+    border-radius: 12px; padding: 28px 24px;
+    width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto;
+  }
+  .popup-title { font-size: 22px; font-weight: 900; color: var(--accent); margin-bottom: 4px; }
+  .popup-date  { font-size: 12px; color: var(--muted2); margin-bottom: 20px; font-weight: 300; }
+  .popup-ex-item {
+    display: flex; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .popup-ex-item:last-child { border-bottom: none; }
+  .popup-ex-name { font-weight: 700; }
+  .popup-ex-vol  { color: var(--accent); font-weight: 900; }
+  .popup-memo {
+    font-size: 13px; color: var(--muted2); font-style: italic;
+    border-left: 2px solid var(--border); padding-left: 12px;
+    margin: 16px 0 0; line-height: 1.6; font-weight: 300; white-space: pre-wrap;
+  }
+  .notion-status {
+    margin: 18px 0 14px; padding: 10px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--surface2); color: var(--muted2);
+  }
+  .notion-status.saving  { color: var(--soso); border-color: var(--soso); }
+  .notion-status.success { color: var(--good); border-color: var(--good); }
+  .notion-status.error   { color: var(--bad);  border-color: var(--bad); }
+  .popup-btn-row { display: flex; gap: 10px; }
+  .popup-retry-btn { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
+  .popup-retry-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .popup-close-btn { background: var(--accent); color: #000; border: none; letter-spacing: 2px; }
+  .popup-close-btn:hover { background: #fff; }
+
+  /* 안내 메시지 */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent); color: #000;
+    font-size: 14px; font-weight: 700;
+    padding: 12px 22px; border-radius: 6px; transition: transform 0.3s ease;
+    z-index: 300; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="top-header">
+  <div class="top-label">오늘의 유산소</div>
+  <div class="top-date" id="topDate"></div>
+</div>
+
+<div class="content">
+  <div class="section">
+    <div class="section-label">유산소 기록</div>
+    <div class="entry-list" id="entryList"></div>
+    <button class="add-entry-btn" onclick="addEntry()">+ 종류 추가</button>
+  </div>
+
+  <div class="section">
+    <div class="section-label">메모</div>
+    <textarea class="memo-input" id="memoInput" placeholder="오늘 특이사항, 느낀 점..."></textarea>
+  </div>
+
+  <button class="end-btn" onclick="showConfirm()">🏁 운동 끝</button>
+</div>
+
+<!-- 종료 확인 -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">운동을 종료할까요?</div>
+    <div class="confirm-desc">입력한 기록이 노션에 저장돼요.</div>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">계속하기</button>
+      <button class="confirm-ok" onclick="confirmEnd()">종료하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 완료 팝업 -->
+<div class="popup-overlay" id="popupOverlay">
+  <div class="popup">
+    <div class="popup-title">유산소 완료 🏁</div>
+    <div class="popup-date" id="popupDate"></div>
+    <div id="popupEntries"></div>
+    <div class="popup-memo" id="popupMemo" style="display:none"></div>
+    <div class="notion-status" id="notionStatus"></div>
+    <div class="popup-btn-row">
+      <button class="popup-retry-btn" id="retryBtn" style="display:none" onclick="retrySave()">다시 저장</button>
+      <button class="popup-close-btn" onclick="closePopup()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 설정 ──
+const NOTION_CONFIG = {
+  workerUrl:  'https://exercise-log.lee34344.workers.dev',
+  databaseId: '36ae9815e3a280ebb089f18dbc971d1e'
+};
+
+// 종류와 기본 단위 — 종류를 바꾸거나 단위를 바꾸고 싶으면 여기만 고치면 돼요
+const CARDIO_TYPES = [
+  { name: '걷기',       unit: 'km' },
+  { name: '런닝',       unit: 'km' },
+  { name: '자전거',     unit: 'km' },
+  { name: '계단오르기', unit: '층' },
+  { name: '등산',       unit: 'km' }
+];
+
+// ── 한국 시간(KST) 기준 오늘 날짜 ──
+function kstInfo() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const get = type => parts.find(p => p.type === type).value;
+  const y = Number(get('year')), m = Number(get('month')), d = Number(get('day'));
+  const weekday = ['일','월','화','수','목','금','토'][new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return {
+    date:  `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+    title: `${y}년 ${m}월 ${d}일 (${weekday})`
+  };
+}
+document.getElementById('topDate').textContent = kstInfo().title;
+
+// ── 기록 카드 ──
+let entryCounter = 0;
+
+function addEntry() {
+  const id = ++entryCounter;
+  const card = document.createElement('div');
+  card.className = 'entry-card';
+  card.dataset.id = id;
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="type-chips">
+        ${CARDIO_TYPES.map(t =>
+          `<button class="type-chip" data-type="${t.name}" onclick="selectType(${id}, '${t.name}')">${t.name}</button>`
+        ).join('')}
+      </div>
+      <button class="del-card-btn" onclick="removeEntry(${id})" aria-label="이 기록 삭제">✕</button>
+    </div>
+    <div class="perf-row">
+      <input class="perf-input" type="number" inputmode="decimal" min="0" step="0.1" placeholder="성과를 입력하세요">
+      <span class="perf-unit">–</span>
+    </div>
+    <div class="past-record" id="past-${id}">
+      <div class="past-label">지난 기록</div>
+      <div id="pastContent-${id}"></div>
+    </div>
+  `;
+  document.getElementById('entryList').appendChild(card);
+}
+
+function getCard(id) {
+  return document.querySelector(`.entry-card[data-id="${id}"]`);
+}
+
+function removeEntry(id) {
+  getCard(id)?.remove();
+  if (!document.querySelector('.entry-card')) addEntry(); // 카드가 항상 하나는 있게
+}
+
+function selectType(id, type) {
+  const card = getCard(id);
+  if (!card) return;
+  card.dataset.type = type;
+  card.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === type));
+  card.querySelector('.perf-unit').textContent = CARDIO_TYPES.find(t => t.name === type).unit;
+  fetchPast(id, type);
+}
+
+// ── 지난 기록 불러오기 ──
+const pastCache = {};
+
+async function fetchPast(id, type) {
+  const box = document.getElementById(`past-${id}`);
+  const content = document.getElementById(`pastContent-${id}`);
+  if (!box) return;
+  box.classList.add('visible');
+  content.textContent = '불러오는 중...';
+
+  try {
+    if (!pastCache[type]) {
+      const res = await fetch(NOTION_CONFIG.workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          databaseId: NOTION_CONFIG.databaseId,
+          action: 'query',
+          filter: { property: '운동 목록', rich_text: { contains: `${type} — 🏃` } },
+          sorts: [{ property: '날짜', direction: 'descending' }],
+          page_size: 5
+        })
+      });
+      const json = await res.json();
+      if (!json.results) throw new Error(json.message || '불러오기 실패');
+      pastCache[type] = json.results;
+    }
+    renderPast(box, content, type, pastCache[type]);
+  } catch (e) {
+    content.textContent = '불러오기 실패';
+  }
+}
+
+function renderPast(box, content, type, pages) {
+  const rows = [];
+  for (const page of pages) {
+    const props = page.properties;
+    const date = props['날짜']?.date?.start || '';
+    const marker = `${type} — 🏃`;
+    const text = (props['운동 목록']?.rich_text || []).map(t => t.plain_text).join('');
+    const values = text.split('\n')
+      .filter(line => line.startsWith(marker))
+      .map(line => line.slice(marker.length));
+    if (values.length) {
+      rows.push(`<div><span class="past-date">${date.slice(5).replace('-', '/')}</span>${values.join(', ')}</div>`);
+    }
+    if (rows.length >= 3) break;
+  }
+  if (!rows.length) { box.classList.remove('visible'); return; }
+  content.innerHTML = rows.join('');
+}
+
+// ── 입력값 모으기 ──
+function collectEntries() {
+  const entries = [];
+  let incomplete = false;
+  document.querySelectorAll('.entry-card').forEach(card => {
+    const type = card.dataset.type || '';
+    const raw = card.querySelector('.perf-input').value.trim();
+    const value = parseFloat(raw);
+    const hasValue = raw !== '' && !isNaN(value) && value > 0;
+    if (!type && !raw) return;                       // 아무것도 안 넣은 카드는 무시
+    if (!type || !hasValue) { incomplete = true; return; }
+    const unit = CARDIO_TYPES.find(t => t.name === type).unit;
+    entries.push({ type, value: `${value}${unit}`, text: `${type} ${value}${unit}` });
+  });
+  return { entries, incomplete };
+}
+
+// ── 종료 확인 ──
+function showConfirm() {
+  const { entries, incomplete } = collectEntries();
+  if (incomplete) { showToast('종류와 성과를 모두 입력해 주세요'); return; }
+  if (!entries.length) { showToast('기록할 유산소를 입력해 주세요'); return; }
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('visible');
+}
+function confirmEnd() {
+  closeConfirm();
+  endWorkout();
+}
+
+// ── 종료 → 팝업 + 노션 저장 ──
+let lastPayload = null;
+let lastSaved = false;
+
+function endWorkout() {
+  const { entries } = collectEntries();
+  const memo = document.getElementById('memoInput').value.trim();
+  const kst = kstInfo();
+
+  document.getElementById('popupDate').textContent = kst.title;
+  document.getElementById('popupEntries').innerHTML = entries.map(e =>
+    `<div class="popup-ex-item"><span class="popup-ex-name">${e.type}</span><span class="popup-ex-vol">${e.value}</span></div>`
+  ).join('');
+  const memoEl = document.getElementById('popupMemo');
+  if (memo) { memoEl.textContent = memo; memoEl.style.display = 'block'; }
+  else { memoEl.style.display = 'none'; }
+  document.getElementById('popupOverlay').classList.add('visible');
+
+  lastSaved = false;
+  lastPayload = {
+    title: kst.title,
+    date:  kst.date,
+    lines: entries.map(e => `${e.type} — 🏃${e.value}`), // 운동 목록에 한 줄씩 이어붙음
+    memo
+  };
+  saveToNotion(lastPayload);
+}
+
+async function saveToNotion(data) {
+  const statusEl = document.getElementById('notionStatus');
+  const retryBtn = document.getElementById('retryBtn');
+  statusEl.className = 'notion-status saving';
+  statusEl.textContent = '⏳ 노션에 저장 중...';
+  retryBtn.style.display = 'none';
+
+  try {
+    const res = await fetch(NOTION_CONFIG.workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        databaseId: NOTION_CONFIG.databaseId,
+        action: 'save_cardio',
+        data
+      })
+    });
+    const json = await res.json();
+    if (!json.id) throw new Error(json.message || '저장 실패');
+    lastSaved = true;
+    Object.keys(pastCache).forEach(k => delete pastCache[k]); // 새 기록이 지난 기록에 반영되게
+    statusEl.className = 'notion-status success';
+    statusEl.textContent = '✅ 노션에 저장됐어요!';
+  } catch (e) {
+    statusEl.className = 'notion-status error';
+    statusEl.textContent = `❌ 저장 실패: ${e.message}`;
+    retryBtn.style.display = 'block';
+  }
+}
+
+function retrySave() {
+  if (lastPayload) saveToNotion(lastPayload);
+}
+
+function closePopup() {
+  document.getElementById('popupOverlay').classList.remove('visible');
+  if (lastSaved) resetForm(); // 저장이 끝났으면 화면을 비워서 중복 저장 방지
+}
+
+function resetForm() {
+  document.getElementById('entryList').innerHTML = '';
+  document.getElementById('memoInput').value = '';
+  addEntry();
+  lastSaved = false;
+}
+
+// ── 안내 메시지 ──
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+addEntry();
+</script>
+</body>
+</html>

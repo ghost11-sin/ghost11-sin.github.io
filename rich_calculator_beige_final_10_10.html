@@ -369,6 +369,60 @@
   body.view-only .sub-del,
   body.view-only .item-remove{pointer-events:none;opacity:.4;}
   body.view-only #sync-status{font-size:13px;font-weight:600;}
+
+  /* ===== 비상금 기록: 입력 폼과 날짜 ===== */
+  .reserve-form{display:flex;flex-direction:column;gap:8px;}
+  .reserve-form input[type=text], .reserve-form input[type=date], .reserve-form select{
+    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;
+    font-size:15px;font-family:inherit;color:var(--text);background:#fff;
+  }
+  .reserve-form-row{display:flex;gap:8px;}
+  .reserve-form-row > *{flex:1 1 0;}
+  .reserve-form .add-btn{width:100%;padding:12px;}
+  .log-text{display:flex;flex-direction:column;gap:2px;}
+  .log-date{position:relative;font-size:11px;color:var(--sub);cursor:pointer;}
+  .log-date input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0;}
+
+  /* ===== 휴대폰 화면 정리 ===== */
+  @media (max-width:600px){
+    header p{font-size:12px;margin-bottom:14px;}
+
+    /* 메인 탭 4개를 2×2로: 옆으로 밀지 않아도 다 보이게 */
+    .main-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;border-bottom:none;margin-bottom:16px;overflow:visible;}
+    .main-tab{
+      padding:10px 6px;font-size:13px;white-space:normal;line-height:1.3;
+      border:1px solid var(--border);border-radius:12px;background:var(--card);
+    }
+    .main-tab.active{background:var(--accent-soft);border-color:var(--accent);}
+    .sub-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;overflow:visible;}
+    .sub-tab{padding:9px 4px;font-size:13px;text-align:center;}
+
+    /* 손가락으로 누르기 편한 글자·버튼 크기 */
+    input[type=number], select, input[type=text], input[type=date], input[type=month]{font-size:16px;}
+    .preset-btn{padding:8px 14px;font-size:13px;}
+    .item-row{padding:10px 12px;}
+    .item-row .item-name, .item-row .item-amount{font-size:14px;}
+    .item-row .item-remove{padding:6px;font-size:16px;}
+    .cat-add-item-btn{width:30px;height:30px;font-size:16px;}
+
+    /* 배분 항목: 이름 · 금액 · 단위 · 삭제를 한 줄에 */
+    .sub-item{flex-wrap:nowrap;padding:8px 0 8px 18px;}
+    .sub-name-inp{flex:1 1 auto !important;order:0;width:auto !important;font-size:15px;}
+    .sub-amt-inp{order:0;flex:0 0 auto !important;width:72px !important;max-width:72px;text-align:right;font-size:15px;}
+    .sub-unit-lbl{order:0;}
+    .sub-del{order:0;margin-left:0;padding:6px 4px;font-size:16px;color:#C7BCA4;}
+    .sub-add-name, .sub-add-amt{font-size:16px;}
+    .sub-add-btn{padding:8px 12px;font-size:13px;}
+
+    /* 기록·카테고리 창: 화면 아래에서 올라오는 시트 */
+    #reserve-log-modal-backdrop, #cat-modal-backdrop{align-items:flex-end !important;}
+    #reserve-log-modal-backdrop > div, #cat-modal-backdrop > div{
+      width:100% !important;max-width:100% !important;max-height:88vh !important;max-height:88dvh !important;
+      border-radius:20px 20px 0 0 !important;padding:20px 16px calc(20px + env(safe-area-inset-bottom)) !important;
+    }
+    .reserve-form input[type=text], .reserve-form input[type=date], .reserve-form select{font-size:16px;}
+    .log-date{font-size:12px;}
+  }
 </style>
 </head>
 <body>
@@ -694,15 +748,17 @@
         <p class="result-title" style="margin:0;">비상금 누적 기록</p>
         <button onclick="closeReserveLogModal()" style="background:none;border:none;color:var(--sub);font-size:20px;cursor:pointer;line-height:1;">×</button>
       </div>
-      <p class="result-sub" style="margin-bottom:14px;">직접 금액을 더하거나 뺄 수 있어요. 각 기록은 삭제할 수 있어요.</p>
-      <div class="add-row">
+      <p class="result-sub" style="margin-bottom:14px;">직접 금액을 더하거나 뺄 수 있어요. 기록의 날짜를 누르면 바꿀 수 있고, 각 기록은 삭제할 수 있어요.</p>
+      <div class="reserve-form">
         <input type="text" id="reserve-log-name-input" placeholder="메모 (예: 3월 비상금, 병원비 사용)">
-        <select id="reserve-log-type-input" style="flex:0 0 70px;padding:10px 8px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:#fff;">
-          <option value="add">입금</option>
-          <option value="sub">출금</option>
-        </select>
-        <input type="number" id="reserve-log-amount-input" placeholder="금액" step="0.01">
-        <span class="unit-inline">만원</span>
+        <div class="reserve-form-row">
+          <select id="reserve-log-type-input" aria-label="입금 또는 출금">
+            <option value="add">입금</option>
+            <option value="sub">출금</option>
+          </select>
+          <input type="date" id="reserve-log-date-input" aria-label="날짜">
+        </div>
+        <div class="input-row"><input type="number" id="reserve-log-amount-input" placeholder="금액" step="0.01" inputmode="decimal"><span class="unit">만원</span></div>
         <button class="add-btn" onclick="addReserveLog()">+ 추가</button>
       </div>
       <div class="item-list" id="reserve-log-list" style="margin-top:12px;"></div>
@@ -1692,6 +1748,7 @@ function renderPortfolioHistory(){
 
   const ctx = document.getElementById('pf-history-chart');
   if(pfHistoryChart) pfHistoryChart.destroy();
+  ctx.parentElement.style.display = displayed.length===0 ? 'none' : '';  // 빈 그래프 자리는 숨김
   if(displayed.length===0) return;
 
   pfHistoryChart = new Chart(ctx, {
@@ -1895,7 +1952,7 @@ function renderCatList(inc){
           oninput="salCats[${ci}].items[${ii}].name=this.value; saveSalary();">
         <div class="sub-divider"></div>
         <input class="sub-amt-inp" type="text" inputmode="decimal" placeholder="0" value="${item.amount||''}"
-          oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\..*)\./g,'\$1'); salCats[${ci}].items[${ii}].amount=parseFloat(this.value)||0; updateSalarySummary();">
+          oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\\..*)\\./g,'\$1'); salCats[${ci}].items[${ii}].amount=parseFloat(this.value)||0; updateSalarySummary();">
         <span class="sub-unit-lbl">만원</span>
         <button class="sub-del" onclick="deleteItem(${ci},${ii})">×</button>`;
       sub.appendChild(row);
@@ -2016,8 +2073,16 @@ document.getElementById('sal-income').addEventListener('input', renderSalary);
    매달 계산되는 "비상금"(미배분 금액)은 자동으로 사라지는 값이라,
    실제로 모아둔 금액을 사용자가 직접 눌러서 누적시키는 구조.
    richcalc_reserve_log_v1 = [{id, name, type:'add'|'sub', amount(만원), date}]
+   date는 'YYYY-MM-DD'. 날짜 입력이 생기기 전 기록은 'YYYY-MM'(월까지만)일 수 있다.
 */
 let reserveLog = [];
+
+function dayKey(d){
+  return `${monthKey(d)}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function reserveDateLabel(date){
+  return date ? date.split('-').join('.') : '날짜 없음';
+}
 
 function loadReserveLog(){
   try{
@@ -2049,7 +2114,7 @@ function addThisMonthToReserve(){
   const amount = thisMonthWon/10000;
   const now = new Date();
   const label = `${now.getMonth()+1}월 비상금`;
-  reserveLog.push({id:pfUid(), name:label, type:'add', amount, date:monthKey(now)});
+  reserveLog.push({id:pfUid(), name:label, type:'add', amount, date:dayKey(now)});
   saveReserveLog();
   renderReserveSummary();
   renderReserveLogList();
@@ -2058,6 +2123,7 @@ function addThisMonthToReserve(){
 
 /* 누적 기록 관리 모달 */
 function openReserveLogModal(){
+  document.getElementById('reserve-log-date-input').value = dayKey(new Date());
   renderReserveLogList();
   document.getElementById('reserve-log-modal-backdrop').style.display = 'flex';
 }
@@ -2073,7 +2139,8 @@ function addReserveLog(){
   const type = typeInput.value;
   const amount = parseFloat(amountInput.value);
   if(!amount || amount<=0) return;
-  reserveLog.push({id:pfUid(), name, type, amount, date:monthKey(new Date())});
+  const date = document.getElementById('reserve-log-date-input').value || dayKey(new Date());
+  reserveLog.push({id:pfUid(), name, type, amount, date});
   nameInput.value=''; amountInput.value='';
   nameInput.focus();
   saveReserveLog();
@@ -2084,16 +2151,33 @@ function removeReserveLog(id){
   saveReserveLog();
   renderReserveLogList();
 }
+function setReserveLogDate(id, date){
+  const x = reserveLog.find(x=>x.id===id);
+  if(!x || !date) return;
+  x.date = date;
+  saveReserveLog();
+  renderReserveLogList();
+}
 function renderReserveLogList(){
   const listEl = document.getElementById('reserve-log-list');
   if(reserveLog.length===0){
     listEl.innerHTML = `<div class="item-empty">아직 기록이 없어요.</div>`;
   } else {
-    listEl.innerHTML = [...reserveLog].reverse().map(x=>`
+    // 최근 날짜가 위로. 날짜가 같으면 나중에 넣은 기록이 위로
+    const sorted = reserveLog.map((x,i)=>({x,i}))
+      .sort((a,b)=> (b.x.date||'').localeCompare(a.x.date||'') || b.i-a.i)
+      .map(o=>o.x);
+    listEl.innerHTML = sorted.map(x=>`
       <div class="item-row">
         <div class="item-name">
           <span class="item-color" style="background:${x.type==='add'?'#5C7A5C':'#B5533C'};"></span>
-          ${x.name}
+          <span class="log-text">
+            <span>${x.name}</span>
+            <label class="log-date">📅 ${reserveDateLabel(x.date)}
+              <input type="date" value="${/^\d{4}-\d{2}-\d{2}$/.test(x.date||'') ? x.date : ''}" aria-label="날짜 바꾸기"
+                onclick="try{this.showPicker()}catch(e){}" onchange="setReserveLogDate('${x.id}', this.value)">
+            </label>
+          </span>
         </div>
         <div class="item-amount" style="color:${x.type==='add'?'#5C7A5C':'#B5533C'};">${x.type==='add'?'+':'-'}${formatManwon(x.amount)}</div>
         <button class="item-remove" onclick="removeReserveLog('${x.id}')">✕</button>
@@ -2103,7 +2187,7 @@ function renderReserveLogList(){
   document.getElementById('reserve-log-total').textContent = formatManwon(reserveCumulativeTotal());
   renderReserveSummary();
 }
-['reserve-log-name-input','reserve-log-amount-input'].forEach(id=>{
+['reserve-log-name-input','reserve-log-amount-input','reserve-log-date-input'].forEach(id=>{
   document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') addReserveLog(); });
 });
 document.getElementById('reserve-log-modal-backdrop').addEventListener('click', function(e){
@@ -2225,9 +2309,11 @@ function renderInvestHistory(){
     listEl.innerHTML = '';
     const ctx = document.getElementById('invest-history-chart');
     if(investHistoryChart){ investHistoryChart.destroy(); investHistoryChart=null; }
+    ctx.parentElement.style.display = 'none';  // 빈 그래프 자리는 숨김
     return;
   }
   emptyEl.style.display = 'none';
+  document.getElementById('invest-history-chart').parentElement.style.display = '';
 
   // 최근 기록 하나의 항목별 구성 리스트
   const latest = investHistory[investHistory.length-1];

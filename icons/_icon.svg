@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="pad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b3486"/>
+      <stop offset="1" stop-color="#231f5c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#5eead4" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#5eead4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- ghost body: dome head, wavy hem -->
+  <g transform="translate(256 284) scale(1.12) translate(-256 -278)">
+    <path d="M166 250 a90 90 0 0 1 180 0 V396 q-15 26 -30 0 q-15 -26 -30 0 q-15 26 -30 0 q-15 -26 -30 0 q-15 26 -30 0 q-15 -26 -30 0 Z"
+          fill="#2e1065" opacity=".18" transform="translate(0 10)"/>
+    <path d="M166 250 a90 90 0 0 1 180 0 V396 q-15 26 -30 0 q-15 -26 -30 0 q-15 26 -30 0 q-15 -26 -30 0 q-15 26 -30 0 q-15 -26 -30 0 Z"
+          fill="#ffffff"/>
+
+    <!-- headset band -->
+    <path d="M150 248 C150 128 362 128 362 248" fill="none" stroke="#231f5c" stroke-width="20" stroke-linecap="round"/>
+    <path d="M160 240 C164 146 348 146 352 240" fill="none" stroke="#4338ca" stroke-width="6" stroke-linecap="round" opacity=".6"/>
+
+    <!-- ear cups with glowing rings -->
+    <rect x="136" y="222" width="40" height="66" rx="18" fill="#231f5c"/>
+    <rect x="336" y="222" width="40" height="66" rx="18" fill="#231f5c"/>
+    <rect x="144" y="236" width="14" height="38" rx="7" fill="#5eead4"/>
+    <rect x="354" y="236" width="14" height="38" rx="7" fill="#5eead4"/>
+
+    <!-- mic boom -->
+    <path d="M352 284 C346 304 326 308 300 304" fill="none" stroke="#231f5c" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="294" cy="304" r="10" fill="#231f5c"/>
+    <circle cx="294" cy="304" r="4.5" fill="#f472b6"/>
+
+    <!-- focused eyes looking down at the game -->
+    <ellipse cx="226" cy="252" rx="13" ry="18" fill="#1e1b4b"/>
+    <ellipse cx="286" cy="252" rx="13" ry="18" fill="#1e1b4b"/>
+    <circle cx="230" cy="258" r="5" fill="#ffffff"/>
+    <circle cx="290" cy="258" r="5" fill="#ffffff"/>
+    <!-- determined brows -->
+    <path d="M208 224 L240 232" stroke="#1e1b4b" stroke-width="7" stroke-linecap="round"/>
+    <path d="M304 224 L272 232" stroke="#1e1b4b" stroke-width="7" stroke-linecap="round"/>
+    <!-- cheeks -->
+    <ellipse cx="200" cy="286" rx="14" ry="8" fill="#f9a8d4" opacity=".75"/>
+    <ellipse cx="312" cy="280" rx="13" ry="7" fill="#f9a8d4" opacity=".75"/>
+
+    <!-- game controller held in front -->
+    <g transform="translate(256 352) scale(.86) translate(-256 -352)">
+    <ellipse cx="256" cy="336" rx="96" ry="22" fill="url(#glow)" opacity=".5"/>
+    <path d="M196 316 h120 c22 0 36 16 38 34 l4 30 c2 16 -18 24 -30 12 l-20 -20 h-104 l-20 20 c-12 12 -32 4 -30 -12 l4 -30 c2 -18 16 -34 38 -34 Z"
+          fill="url(#pad)" stroke="#1a1745" stroke-width="3"/>
+    <!-- little ghost hands gripping it -->
+    <circle cx="176" cy="352" r="15" fill="#ffffff"/>
+    <circle cx="336" cy="352" r="15" fill="#ffffff"/>
+    <!-- d-pad -->
+    <rect x="207" y="333" width="8" height="26" rx="2" fill="#e0e7ff"/>
+    <rect x="198" y="342" width="26" height="8" rx="2" fill="#e0e7ff"/>
+    <!-- buttons -->
+    <circle cx="300" cy="336" r="6" fill="#5eead4"/>
+    <circle cx="312" cy="348" r="6" fill="#f472b6"/>
+    <circle cx="288" cy="348" r="6" fill="#facc15"/>
+    <circle cx="300" cy="360" r="6" fill="#818cf8"/>
+    </g>
+  </g>
+</svg>

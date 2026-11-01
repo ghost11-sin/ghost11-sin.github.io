@@ -1,6 +1,6 @@
 // Bump this when you change index.html so installed copies pick up the new version
-const CACHE = 'hub-v3';
-const ASSETS = ['./', 'index.html', 'manifest.webmanifest?v=3', 'apps.json', 'icons/icon-180.png?v=3', 'icons/icon-192.png?v=3', 'icons/icon-512.png?v=3'];
+const CACHE = 'hub-v4';
+const ASSETS = ['./', 'index.html', 'manifest.webmanifest?v=4', 'apps.json', 'icons/icon-180.png?v=4', 'icons/icon-192.png?v=4', 'icons/icon-512.png?v=4'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

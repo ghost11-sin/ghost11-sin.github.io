@@ -383,6 +383,29 @@
   .log-date{position:relative;font-size:11px;color:var(--sub);cursor:pointer;}
   .log-date input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0;}
 
+  /* ===== 배분 항목 출금일 ===== */
+  select.sub-day{width:auto;flex:0 0 auto;
+    appearance:none;-webkit-appearance:none;flex-shrink:0;cursor:pointer;
+    padding:3px 8px;border:1px solid var(--border);border-radius:20px;background:#fff;
+    font-family:inherit;font-size:12px;color:#B5AA94;text-align:center;
+  }
+  .sub-day.set{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);font-weight:700;}
+  .sub-add-row .sub-day{color:var(--sub);}
+  body.view-only .sub-day{pointer-events:none;opacity:.6;}
+
+  .sched-list{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+  .sched-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:12px;background:#FBF8F2;}
+  .sched-day{flex:0 0 44px;font-family:var(--font-number);font-size:13px;font-weight:700;color:var(--accent);}
+  .sched-name{flex:1;font-size:13px;color:var(--text);display:flex;align-items:center;gap:6px;overflow:hidden;}
+  .sched-name span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sched-amt{font-family:var(--font-number);font-size:13px;font-weight:600;color:var(--text);flex-shrink:0;}
+  .sched-badge{font-size:11px;font-weight:700;color:var(--sub);flex:0 0 38px;text-align:right;}
+  .sched-row.past{opacity:.45;}
+  .sched-row.next{border-color:var(--accent);background:var(--accent-soft);}
+  .sched-row.next .sched-badge{color:var(--accent);}
+  .sched-foot{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--sub);}
+  .sched-foot b{font-family:var(--font-number);color:var(--text);}
+
   /* ===== 휴대폰 화면 정리 ===== */
   @media (max-width:600px){
     header p{font-size:12px;margin-bottom:14px;}
@@ -412,6 +435,8 @@
     .sub-unit-lbl{order:0;}
     .sub-del{order:0;margin-left:0;padding:6px 4px;font-size:16px;color:#C7BCA4;}
     .sub-add-name, .sub-add-amt{font-size:16px;}
+    select.sub-day{font-size:13px;padding:4px 8px;}
+    .sub-add-row .sub-day{order:2;}
     .sub-add-btn{padding:8px 12px;font-size:13px;}
 
     /* 기록·카테고리 창: 화면 아래에서 올라오는 시트 */
@@ -701,6 +726,13 @@
           <p class="result-title">배분 비율</p>
           <div class="sal-ratio-bar" id="sal-ratio-bar"></div>
           <div class="sal-ratio-legend" id="sal-ratio-legend"></div>
+        </div>
+
+        <div class="card">
+          <p class="result-title" style="margin-bottom:2px;">📅 출금 일정</p>
+          <p class="result-sub" id="sched-sub">배분 항목 옆 '날짜'를 눌러 매달 빠져나가는 날을 정하면 여기에 날짜순으로 모여요.</p>
+          <div class="sched-list" id="sched-list"></div>
+          <div class="sched-foot" id="sched-foot"></div>
         </div>
 
         <div class="card sal-reserve-card">
@@ -1848,6 +1880,7 @@ function updateSalarySummary(){
   document.getElementById('sal-annual').textContent = inc>0 ? formatManwon(alloc*12/10000) : '—';
 
   if(typeof renderReserveSummary==='function') renderReserveSummary();
+  renderWithdrawSchedule();
 
   saveSalary();
 }
@@ -1883,6 +1916,7 @@ function renderSalary(){
   document.getElementById('sal-annual').textContent = inc>0 ? formatManwon(alloc*12/10000) : '—';
 
   if(typeof renderReserveSummary==='function') renderReserveSummary();
+  renderWithdrawSchedule();
 
   saveSalary();
 }
@@ -1917,6 +1951,52 @@ function renderRatioBar(inc){
   }
 }
 
+/* 배분 항목 출금일: item.day = 1~31 또는 'last'(말일). 없으면 정하지 않은 항목 */
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+function dayOptions(day){
+  let html = `<option value="">날짜</option>`;
+  for(let d=1; d<=31; d++) html += `<option value="${d}"${String(day)===String(d)?' selected':''}>${d}일</option>`;
+  return html + `<option value="last"${day==='last'?' selected':''}>말일</option>`;
+}
+function parseDay(v){ return v==='last' ? 'last' : (parseInt(v)||null); }
+function setItemDay(ci, ii, v){
+  const item = salCats[ci].items[ii];
+  const day = parseDay(v);
+  if(day) item.day = day; else delete item.day;
+  renderSalary();
+}
+// 이번 달의 실제 날짜 (30일까지인 달의 31일·말일은 그 달 마지막 날로)
+function dayNumber(day, ref){
+  const last = new Date(ref.getFullYear(), ref.getMonth()+1, 0).getDate();
+  return day==='last' ? last : Math.min(day, last);
+}
+function renderWithdrawSchedule(){
+  const listEl = document.getElementById('sched-list'); if(!listEl) return;
+  const footEl = document.getElementById('sched-foot');
+  const today = new Date(), d = today.getDate();
+  const rows = [];
+  salCats.forEach((cat, ci)=> cat.items.forEach(item=>{
+    if(item.day) rows.push({item, color:SAL_COLORS[ci % SAL_COLORS.length], n:dayNumber(item.day, today)});
+  }));
+  rows.sort((a,b)=>a.n-b.n);
+  document.getElementById('sched-sub').style.display = rows.length ? 'none' : '';
+  if(!rows.length){ listEl.innerHTML=''; footEl.innerHTML=''; return; }
+
+  const nextIdx = rows.findIndex(r=>r.n>=d);
+  listEl.innerHTML = rows.map((r,i)=>{
+    const cls = r.n<d ? 'past' : (i===nextIdx ? 'next' : '');
+    const badge = r.n<d ? '지남' : r.n===d ? '오늘' : 'D-'+(r.n-d);
+    return `<div class="sched-row ${cls}">
+      <span class="sched-day">${r.item.day==='last' ? '말일' : r.item.day+'일'}</span>
+      <span class="sched-name"><span class="cat-color-dot" style="background:${r.color}"></span><span>${escHtml(r.item.name||'항목')}</span></span>
+      <span class="sched-amt">${formatManwon(parseFloat(r.item.amount)||0)}</span>
+      <span class="sched-badge">${badge}</span>
+    </div>`;
+  }).join('');
+  const sum = list => list.reduce((s,r)=>s+(parseFloat(r.item.amount)||0), 0);
+  footEl.innerHTML = `<span>이번 달 남은 출금 <b>${formatManwon(sum(rows.filter(r=>r.n>=d)))}</b></span><span>합계 <b>${formatManwon(sum(rows))}</b></span>`;
+}
+
 function renderCatList(inc){
   const el = document.getElementById('sal-cat-list');
   el.innerHTML = '';
@@ -1949,7 +2029,8 @@ function renderCatList(inc){
       const row = document.createElement('div'); row.className='sub-item';
       row.innerHTML = `
         <input class="sub-name-inp" type="text" placeholder="항목 이름" value="${item.name}"
-          oninput="salCats[${ci}].items[${ii}].name=this.value; saveSalary();">
+          oninput="salCats[${ci}].items[${ii}].name=this.value; saveSalary(); renderWithdrawSchedule();">
+        <select class="sub-day ${item.day?'set':''}" aria-label="출금일" onchange="setItemDay(${ci},${ii},this.value)">${dayOptions(item.day)}</select>
         <div class="sub-divider"></div>
         <input class="sub-amt-inp" type="text" inputmode="decimal" placeholder="0" value="${item.amount||''}"
           oninput="this.value=this.value.replace(/[^0-9.]/g,'').replace(/(\\..*)\\./g,'\$1'); salCats[${ci}].items[${ii}].amount=parseFloat(this.value)||0; updateSalarySummary();">
@@ -1963,6 +2044,7 @@ function renderCatList(inc){
     addRow.id = 'addrow-'+cat.id;
     addRow.innerHTML = `
       <input class="sub-add-name" type="text" placeholder="항목 이름 (예: 월세, 식비)">
+      <select class="sub-day sub-add-day" aria-label="출금일">${dayOptions('')}</select>
       <div class="sub-divider"></div>
       <input class="sub-add-amt" type="text" inputmode="decimal" placeholder="금액">
       <span class="sub-add-unit">만원</span>
@@ -2000,7 +2082,10 @@ function addItem(ci, catId){
   const ni = ar.querySelector('.sub-add-name'), ai = ar.querySelector('.sub-add-amt');
   const name = ni.value.trim(), amount = parseFloat(ai.value)||0;
   if(!name && amount<=0) return;
-  salCats[ci].items.push({id:pfUid(), name:name||'항목', amount});
+  const item = {id:pfUid(), name:name||'항목', amount};
+  const day = parseDay(ar.querySelector('.sub-add-day').value);
+  if(day) item.day = day;
+  salCats[ci].items.push(item);
   ni.value=''; ai.value='';
   renderSalary();
   setTimeout(()=>{

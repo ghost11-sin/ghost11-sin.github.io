@@ -1,0 +1,34 @@
+[
+  {
+    "name": "유산소 기록",
+    "url": "cardio_tracker_10_17.html",
+    "icon": "🏃",
+    "category": "건강",
+    "description": "걷기·런닝·자전거·계단·등산 기록을 노션에 저장해요",
+    "color": "#4f46e5"
+  },
+  {
+    "name": "IRON LOG",
+    "url": "workout_tracker_10_9.html",
+    "icon": "🏋️",
+    "category": "건강",
+    "description": "세트와 무게를 기록하고 노션에 저장해요",
+    "color": "#4f46e5"
+  },
+  {
+    "name": "부자 계산기",
+    "url": "rich_calculator_beige_final_10_10.html",
+    "icon": "💰",
+    "category": "돈",
+    "description": "자산과 월급을 한곳에서 계산하고 배분해요",
+    "color": "#10b981"
+  },
+  {
+    "name": "아이디어 캡처",
+    "url": "idea-capture_10_10.html",
+    "icon": "📸",
+    "category": "아이디어",
+    "description": "사진을 찍거나 골라서 아이디어 박스로 보내요",
+    "color": "#f59e0b"
+  }
+]

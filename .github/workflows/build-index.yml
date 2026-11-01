@@ -1,10 +1,10 @@
-name: 목차 자동 생성
+name: 앱 목록 자동 생성
 
 on:
   push:
     branches: [main]
     paths-ignore:
-      - "index.html"
+      - "apps.json"
   workflow_dispatch:
 
 permissions:
@@ -12,24 +12,24 @@ permissions:
   pages: write
 
 jobs:
-  build-index:
+  build-apps:
     runs-on: ubuntu-latest
     steps:
       - name: 저장소 내려받기
         uses: actions/checkout@v4
 
-      - name: 목차 만들기
-        run: python3 build_index.py
+      - name: 앱 목록 만들기
+        run: node build_apps.mjs
 
-      - name: 바뀐 목차 저장하기
+      - name: 바뀐 목록 저장하기
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add apps.json
           if git diff --cached --quiet; then
-            echo "목차에 바뀐 내용이 없어요."
+            echo "앱 목록에 바뀐 내용이 없어요."
           else
-            git commit -m "목차 자동 갱신"
+            git commit -m "앱 목록 자동 갱신"
             git push
           fi
 

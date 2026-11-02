@@ -1007,6 +1007,7 @@ function applyBundleToLocalStorage(bundle){
 // 실제로 노션에 저장을 요청하는 함수 (디바운스 타이머가 호출)
 async function flushToNotion(){
   if(viewOnly) return;   // 보기 전용: 노션으로 보내지 않아요
+  notionSyncTimer = null;
   if(notionSyncInFlight){
     notionSyncQueued = true; // 지금 요청이 진행 중이면, 끝난 뒤 한 번 더 실행되도록 예약
     return;
@@ -1044,6 +1045,38 @@ function scheduleNotionSync(){
   clearTimeout(notionSyncTimer);
   notionSyncTimer = setTimeout(flushToNotion, 1200);
 }
+
+// 앱을 닫거나 다른 앱으로 넘어가면, 기다리던 저장을 바로 보내요
+// (날짜 고르기처럼 한 번 누르고 바로 닫으면 1.2초 대기 중에 저장이 사라졌어요)
+function flushNowOnLeave(){
+  if(!notionSyncTimer || viewOnly) return;
+  clearTimeout(notionSyncTimer);
+  notionSyncTimer = null;
+  const key = readAccessKey();
+  if(!key) return;
+  try{
+    fetch(NOTION_WORKER_URL + '/save', {
+      method: 'POST',
+      keepalive: true,   // 페이지가 닫혀도 요청은 끝까지 가요
+      headers: {'Content-Type':'application/json', 'X-Access-Key': encodeURIComponent(key)},
+      body: JSON.stringify(collectAllLocalData()),
+    });
+  }catch(e){}
+}
+
+// 오래 뒤에 다시 열린 화면은 옛 데이터를 들고 있어서, 그대로 고치면 다른 기기에서 고친 내용을 덮어써요.
+// 1분 넘게 안 보다가 돌아오면 노션에서 새로 불러와요.
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden'){
+    hiddenAt = Date.now();
+    flushNowOnLeave();
+  } else if(hiddenAt && Date.now() - hiddenAt > 60000 && !notionSyncTimer && !notionSyncInFlight){
+    location.reload();
+  }
+});
+window.addEventListener('pagehide', flushNowOnLeave);
+window.addEventListener('pageshow', e=>{ if(e.persisted) location.reload(); });
 
 // 페이지 로드 시 노션에서 데이터를 받아와 로컬에 채워넣는다
 async function loadFromNotion(){

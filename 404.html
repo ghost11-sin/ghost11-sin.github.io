@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- 확대 금지 -->
+<style>html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}</style>
+<script>["gesturestart","gesturechange"].forEach(t=>document.addEventListener(t,e=>e.preventDefault()));</script>
+<title>페이지 없음</title>
+<script>
+// 이름을 바꾼 파일의 옛 주소(노션 임베드, 즐겨찾기)를 새 주소로 보낸다
+const RENAMED = {
+  'cardio_tracker_10_17.html': 'cardio_tracker.html',
+  'idea-capture_10_10.html': 'idea-capture.html',
+  'rich_calculator_beige_final_10_10.html': 'rich_calculator_beige_final.html',
+  'workout_tracker_10_9.html': 'workout_tracker.html',
+};
+const target = RENAMED[location.pathname.split('/').pop()];
+if (target) location.replace('/' + target + location.search + location.hash);
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; box-sizing: border-box; background: #f2f2f7; color: #111827; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; text-align: center; }
+  a { color: #4f46e5; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #000; color: #f2f2f7; }
+    a { color: #a5b4fc; }
+  }
+</style>
+</head>
+<body>
+  <div>페이지를 찾을 수 없어요.</div>
+  <a href="/">도구 모음으로 가기</a>
+</body>
+</html>

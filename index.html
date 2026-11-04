@@ -247,6 +247,19 @@ function normalize(list) {
     }));
 }
 
+// Files that lost their date suffix: fix the addresses this device saved before the rename
+const RENAMED = {
+  'cardio_tracker_10_17.html': 'cardio_tracker.html',
+  'idea-capture_10_10.html': 'idea-capture.html',
+  'rich_calculator_beige_final_10_10.html': 'rich_calculator_beige_final.html',
+  'workout_tracker_10_9.html': 'workout_tracker.html',
+};
+function renamedUrl(u) {
+  if (/^[a-z][\w+.-]*:/i.test(u) && !u.startsWith(location.origin + '/')) return u;
+  const m = u.match(/^(.*?)([^\/?#]+\.html)(.*)$/);
+  return m && RENAMED[m[2]] ? m[1] + RENAMED[m[2]] + m[3] : u;
+}
+
 // Full links keep their scheme, bare domains get https://, anything else is a file in this site
 function fixUrl(v) {
   if (!v || /^[a-z][\w+.-]*:/i.test(v) || /^[./#?]/.test(v) || /\.html?([?#].*)?$/i.test(v)) return v;
@@ -443,6 +456,7 @@ function toast(msg) {
   setTitle(store.get(TITLE_KEY) || '유령의 도구 모음');
   const saved = store.get(KEY);
   if (saved) { try { apps = normalize(JSON.parse(saved)); } catch { apps = []; } }
+  apps.forEach(a => { a.url = renamedUrl(a.url); });
   render();
 
   const defaults = normalize(await loadDefaults());
@@ -452,7 +466,7 @@ function toast(msg) {
   } else {
     // Append apps that were uploaded since this device last looked
     let seen;
-    try { seen = new Set(JSON.parse(store.get(SEEN_KEY) || 'null') || apps.map(a => a.url)); } catch { seen = new Set(apps.map(a => a.url)); }
+    try { seen = new Set((JSON.parse(store.get(SEEN_KEY) || 'null') || apps.map(a => a.url)).map(renamedUrl)); } catch { seen = new Set(apps.map(a => a.url)); }
     const fresh = defaults.filter(a => !seen.has(a.url) && !apps.some(b => b.url === a.url));
     apps.push(...fresh);
     if (fresh.length) toast(`새 앱 ${fresh.length}개가 추가됐어요`);

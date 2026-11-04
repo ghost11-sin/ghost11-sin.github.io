@@ -23,7 +23,7 @@ async function 페이지_찾기(폴더 = ".") {
     if (제외_폴더.has(항목.name) || /^[._]/.test(항목.name)) continue;
     const 경로 = 폴더 === "." ? 항목.name : posix.join(폴더, 항목.name);
     if (항목.isDirectory()) 결과.push(...(await 페이지_찾기(경로)));
-    else if (항목.name.endsWith(".html") && 경로 !== "index.html") 결과.push(경로);
+    else if (항목.name.endsWith(".html") && 경로 !== "index.html" && 경로 !== "404.html") 결과.push(경로);
   }
   return 결과;
 }

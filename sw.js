@@ -1,5 +1,5 @@
 // Bump this when you change index.html so installed copies pick up the new version
-const CACHE = 'hub-v5';
+const CACHE = 'hub-v6';
 const ASSETS = ['./', 'index.html', 'manifest.webmanifest?v=4', 'apps.json', 'icons/icon-180.png?v=4', 'icons/icon-192.png?v=4', 'icons/icon-512.png?v=4'];
 
 self.addEventListener('install', (e) => {

@@ -198,6 +198,8 @@
     display: none;
   }
   .past-record.visible { display: block; }
+  .routine-past { margin: 10px 0 0; }
+  .routine-past-list { list-style: none; font-size: 14px; color: var(--text); line-height: 1.7; font-weight: 400; }
   .past-record-label {
     font-size: 9px; letter-spacing: 2px; color: var(--accent);
     text-transform: uppercase; font-weight: 700; margin-bottom: 4px;
@@ -637,6 +639,10 @@
         <div class="r-desc">등 · 이두 · 후면삼각</div>
       </button>
     </div>
+    <div class="past-record routine-past" id="routinePast">
+      <div class="past-record-label" id="routinePastLabel"></div>
+      <ul class="routine-past-list" id="routinePastList"></ul>
+    </div>
   </div>
 
   <!-- CONDITION -->
@@ -741,6 +747,7 @@ function selectRoutine(btn, val) {
     b.classList.remove('active','r-push','r-leg','r-pull'));
   state.routine = val;
   btn.classList.add('active', 'r-' + val);
+  showLastRoutine(val);
 }
 
 // ── TOGGLE BUTTONS (컨디션) ──
@@ -1251,6 +1258,59 @@ async function fetchPastWorkouts(routine) {
     }).join('');
   } catch(e) {
     contentEl.innerHTML = `<div class="compare-loading" style="color:var(--bad)">불러오기 실패</div>`;
+  }
+}
+
+// ── 루틴을 고르면 지난번 같은 루틴에서 한 운동 이름만 보여주기 ──
+const lastRoutineCache = {};
+
+async function showLastRoutine(routine) {
+  const routineLabel = { push:'PUSH DAY', leg:'LEG DAY', pull:'PULL DAY' }[routine];
+  const boxEl   = document.getElementById('routinePast');
+  const labelEl = document.getElementById('routinePastLabel');
+  const listEl  = document.getElementById('routinePastList');
+
+  const render = (label, names) => {
+    labelEl.textContent = label;
+    listEl.replaceChildren(...names.map(name => {
+      const li = document.createElement('li');
+      li.textContent = name;
+      return li;
+    }));
+  };
+
+  boxEl.classList.add('visible');
+  render(`지난 ${routineLabel}`, ['불러오는 중...']);
+
+  try {
+    if (!lastRoutineCache[routine]) {
+      const res = await fetch(NOTION_CONFIG.workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'query',
+          filter: { property: '루틴', select: { equals: routineLabel } },
+          sorts: [{ property: '날짜', direction: 'descending' }],
+          page_size: 2   // 오늘 이미 저장한 기록이 있어도 그 전 기록을 찾을 수 있게
+        })
+      });
+      const json = await res.json();
+      if (!json.results) throw new Error(json.message || '불러오기 실패');
+      lastRoutineCache[routine] = json.results;
+    }
+    if (state.routine !== routine) return;   // 그 사이 다른 루틴을 골랐으면 무시
+
+    const page = lastRoutineCache[routine].find(p => p.properties['날짜']?.date?.start?.slice(0, 10) !== kstInfo().date);
+    if (!page) {
+      render(`지난 ${routineLabel}`, ['이전 기록이 없어요']);
+      return;
+    }
+    // 한 줄 형식: "운동 이름 — 세트 내용 (볼륨)" 에서 이름만
+    const exText = (page.properties['운동 목록']?.rich_text || []).map(t => t.text.content).join('');
+    const names  = exText.split('\n').map(l => l.split(' — ')[0].trim()).filter(Boolean);
+    render(`지난 ${routineLabel} · ${page.properties['날짜'].date.start.slice(0, 10)}`, names.length ? names : ['운동 기록이 없어요']);
+  } catch(e) {
+    if (state.routine === routine) render(`지난 ${routineLabel}`, ['불러오기 실패']);
   }
 }
 

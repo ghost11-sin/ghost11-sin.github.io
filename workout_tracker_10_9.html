@@ -210,6 +210,39 @@
   .routine-past-item.added { color: var(--muted2); }
   .routine-past-item.added::after { content: '✓'; color: var(--good); font-size: 14px; }
 
+  /* 운동별 성장 그래프 */
+  .growth-box { display: none; margin-top: 10px; }
+  .growth-box.visible { display: block; }
+  .growth-select {
+    width: 100%; min-height: 44px; padding: 0 10px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font: inherit; font-size: 16px;
+  }
+  .growth-metric { display: flex; gap: 6px; margin-top: 8px; }
+  .growth-metric button {
+    flex: 1; min-height: 40px;
+    background: none; border: 1px solid var(--border); border-radius: 4px;
+    color: var(--muted2); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .growth-metric button.active { border-color: var(--accent); color: var(--text); }
+  .growth-summary { margin: 12px 0 8px; font-size: 13px; color: var(--muted2); line-height: 1.5; min-height: 20px; }
+  .growth-summary b { color: var(--text); font-weight: 700; }
+  .growth-chart { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+  .growth-chart svg { display: block; width: 100%; touch-action: pan-y; }
+  .growth-empty { padding: 28px 12px; text-align: center; font-size: 13px; color: var(--muted2); }
+  .growth-tip {
+    position: absolute; top: 6px; padding: 5px 8px; white-space: nowrap; pointer-events: none;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+    font-size: 12px; color: var(--text); line-height: 1.4;
+  }
+  .growth-tip span { color: var(--muted2); }
+  .growth-table { margin-top: 8px; font-size: 13px; color: var(--muted2); }
+  .growth-table summary { min-height: 36px; line-height: 36px; cursor: pointer; }
+  .growth-table table { width: 100%; border-collapse: collapse; }
+  .growth-table th, .growth-table td { padding: 6px 0; border-top: 1px solid var(--border); text-align: right; font-weight: 400; }
+  .growth-table th:first-child, .growth-table td:first-child { text-align: left; }
+  .growth-table td { color: var(--text); }
+
   /* 저장 전 기록 불러옴 안내 */
   .draft-banner {
     display: none; align-items: center; justify-content: space-between; gap: 10px;
@@ -697,6 +730,28 @@
     <div class="section-label">오늘의 총 볼륨</div>
     <div class="volume-box" id="volumeBox">
       <div class="volume-empty">운동을 추가하면 볼륨이 계산돼요</div>
+    </div>
+  </div>
+
+  <!-- GROWTH -->
+  <div class="section">
+    <div class="section-label">운동별 성장</div>
+    <button class="add-ex-btn" id="growthToggle" onclick="toggleGrowth()">📈 그래프 보기</button>
+    <div class="growth-box" id="growthBox">
+      <select class="growth-select" id="growthSelect" aria-label="운동 선택" onchange="renderGrowth()"></select>
+      <div class="growth-metric">
+        <button class="active" data-metric="vol" onclick="setGrowthMetric(this)">볼륨</button>
+        <button data-metric="top" onclick="setGrowthMetric(this)">최고 무게</button>
+      </div>
+      <div class="growth-summary" id="growthSummary"></div>
+      <div class="growth-chart" id="growthChart"></div>
+      <details class="growth-table">
+        <summary>기록 표로 보기</summary>
+        <table>
+          <thead><tr><th>날짜</th><th>최고 무게</th><th>볼륨</th></tr></thead>
+          <tbody id="growthTableBody"></tbody>
+        </table>
+      </details>
     </div>
   </div>
 
@@ -1706,6 +1761,211 @@ function closePopup() {
   document.getElementById('popupOverlay').classList.remove('visible');
 }
 
+// ── 운동별 성장 그래프 ──
+let growthHistory = null;   // { 운동 이름: [{date, vol, top}] } 날짜 오름차순, 노션 저장 뒤엔 다시 불러와요
+let growthMetric = 'vol';
+
+// 워커가 다음 페이지 이동을 지원하지 않아서, 가장 오래된 날짜 이전을 다시 묻는 식으로 전부 모아요
+async function fetchAllWorkouts() {
+  const pages = new Map();
+  let oldest = null;
+  for (let i = 0; i < 50; i++) {
+    const res = await fetch(NOTION_CONFIG.workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'query',
+        ...(oldest ? { filter: { property: '날짜', date: { on_or_before: oldest } } } : {}),
+        sorts: [{ property: '날짜', direction: 'descending' }],
+        page_size: 100
+      })
+    });
+    const json = await res.json();
+    if (!json.results) throw new Error(json.message || '불러오기 실패');
+    const before = pages.size;
+    json.results.forEach(p => pages.set(p.id, p));
+    if (json.results.length < 100 || pages.size === before) break;
+    oldest = json.results[json.results.length - 1].properties['날짜']?.date?.start;
+    if (!oldest) break;
+  }
+  return [...pages.values()];
+}
+
+// 볼륨 화면과 같은 기준: 예열 세트는 빼요. 같은 날 같은 운동은 합쳐요.
+function buildGrowthHistory(pages) {
+  const byName = {};
+  pages.forEach(page => {
+    const date = page.properties['날짜']?.date?.start?.slice(0, 10);
+    if (!date) return;
+    pastLines(page).forEach(line => {
+      const sets = parsePastSets(line).filter(s => s.type !== 'warmup');
+      const vol = sets.reduce((sum, s) => sum + s.kg * s.reps, 0);
+      if (!vol) return;
+      const top = Math.max(...sets.map(s => Number(s.kg)));
+      const days = byName[pastLineName(line)] ??= {};
+      const day = days[date] ??= { date, vol: 0, top: 0 };
+      day.vol += vol;
+      day.top = Math.max(day.top, top);
+    });
+  });
+  const history = {};
+  Object.keys(byName).forEach(name => {
+    history[name] = Object.values(byName[name]).sort((a, b) => a.date.localeCompare(b.date));
+  });
+  return history;
+}
+
+async function toggleGrowth() {
+  const box = document.getElementById('growthBox');
+  const open = box.classList.toggle('visible');
+  document.getElementById('growthToggle').textContent = open ? '📈 그래프 닫기' : '📈 그래프 보기';
+  if (!open) return;
+  if (growthHistory) { renderGrowth(); return; }
+
+  const summaryEl = document.getElementById('growthSummary');
+  const chartEl = document.getElementById('growthChart');
+  summaryEl.textContent = '';
+  chartEl.innerHTML = '<div class="growth-empty">⏳ 기록 불러오는 중...</div>';
+  try {
+    growthHistory = buildGrowthHistory(await fetchAllWorkouts());
+  } catch(e) {
+    chartEl.innerHTML = '<div class="growth-empty">불러오기 실패 · 닫았다가 다시 열어 주세요</div>';
+    return;
+  }
+  const names = Object.keys(growthHistory).sort((a, b) => growthHistory[b].length - growthHistory[a].length);
+  const select = document.getElementById('growthSelect');
+  select.replaceChildren(...names.map(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = `${name} (${growthHistory[name].length}회)`;
+    return opt;
+  }));
+  // 오늘 하고 있는 운동이 있으면 그것부터 보여줘요
+  const current = [...document.querySelectorAll('.exercise-card')].map(cardName).find(n => growthHistory[n]);
+  if (current) select.value = current;
+  renderGrowth();
+}
+
+function setGrowthMetric(btn) {
+  growthMetric = btn.dataset.metric;
+  document.querySelectorAll('.growth-metric button').forEach(b => b.classList.toggle('active', b === btn));
+  renderGrowth();
+}
+
+function growthDateLabel(date) {
+  const [, m, d] = date.split('-');
+  return `${Number(m)}/${Number(d)}`;
+}
+
+// 축 눈금: 1, 2, 2.5, 5, 10 단위 중 4칸 안쪽으로 들어오는 가장 작은 간격
+function growthNiceStep(max) {
+  const base = Math.pow(10, Math.floor(Math.log10(max || 1)));
+  const step = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10].map(n => n * base).find(s => max / s <= 4);
+  return step || base * 10;
+}
+
+function renderGrowth() {
+  const summaryEl = document.getElementById('growthSummary');
+  const chartEl = document.getElementById('growthChart');
+  const bodyEl = document.getElementById('growthTableBody');
+  if (!growthHistory || !document.getElementById('growthBox').classList.contains('visible')) return;
+
+  const name = document.getElementById('growthSelect').value;
+  const points = growthHistory[name] || [];
+  if (!points.length) {
+    summaryEl.textContent = '';
+    bodyEl.replaceChildren();
+    chartEl.innerHTML = '<div class="growth-empty">아직 무게가 적힌 기록이 없어요</div>';
+    return;
+  }
+
+  bodyEl.innerHTML = [...points].reverse().map(p =>
+    `<tr><td>${p.date}</td><td>${p.top.toLocaleString()}kg</td><td>${p.vol.toLocaleString()}kg</td></tr>`
+  ).join('');
+
+  const value = p => p[growthMetric];
+  const fmt = v => `${v.toLocaleString()}kg`;
+  const last = points[points.length - 1];
+  const best = points.reduce((a, b) => value(b) >= value(a) ? b : a);
+  summaryEl.innerHTML = `최근 <b>${fmt(value(last))}</b> (${growthDateLabel(last.date)}) · 최고 <b>${fmt(value(best))}</b> (${growthDateLabel(best.date)})`;
+
+  if (points.length < 2) {
+    chartEl.innerHTML = '<div class="growth-empty">기록이 두 번 이상 쌓이면 그래프가 그려져요</div>';
+    return;
+  }
+
+  // 날짜 간격을 실제대로 두어서 쉰 기간도 보이게 해요
+  const W = chartEl.clientWidth, H = 210;
+  const m = { l: 40, r: 14, t: 26, b: 26 };
+  const time = p => new Date(p.date + 'T00:00:00Z').getTime();
+  const t0 = time(points[0]), t1 = time(last);
+  const step = growthNiceStep(Math.max(...points.map(value)));
+  const yMax = Math.ceil(Math.max(...points.map(value)) / step) * step;
+  const X = t => m.l + (t - t0) / ((t1 - t0) || 1) * (W - m.l - m.r);
+  const Y = v => H - m.b - v / yMax * (H - m.t - m.b);
+  const xy = points.map(p => ({ p, x: X(time(p)), y: Y(value(p)) }));
+  const tick = v => v >= 1000 ? `${+(v / 1000).toFixed(1)}K` : `${v}`;
+
+  let grid = '';
+  for (let v = 0; v <= yMax + step / 2; v += step) {
+    grid += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)" stroke-width="1"/>
+      <text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted2)">${tick(v)}</text>`;
+  }
+  const mid = xy[0].x + (xy[xy.length - 1].x - xy[0].x) / 2;
+  const midPoint = new Date((t0 + t1) / 2).toISOString().slice(0, 10);
+  const xLabels = [
+    [xy[0].x, 'start', points[0].date],
+    [mid, 'middle', midPoint],
+    [xy[xy.length - 1].x, 'end', last.date]
+  ].map(([x, anchor, date]) =>
+    `<text x="${x}" y="${H - 8}" text-anchor="${anchor}" font-size="11" fill="var(--muted2)">${growthDateLabel(date)}</text>`
+  ).join('');
+
+  const line = xy.map(o => `${o.x},${o.y}`).join(' ');
+  // 점이 너무 빽빽하면 마지막 점만 남겨요
+  const dense = (W - m.l - m.r) / xy.length < 10;
+  const dot = (o, r) => `<circle cx="${o.x}" cy="${o.y}" r="${r}" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+  const dots = (dense ? xy.slice(-1) : xy).map(o => dot(o, 4)).join('');
+  const end = xy[xy.length - 1];
+
+  chartEl.innerHTML = `
+    <svg height="${H}" viewBox="0 0 ${W} ${H}" role="img">
+      ${grid}${xLabels}
+      <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      <text x="${end.x}" y="${end.y - 10}" text-anchor="end" font-size="12" font-weight="700" fill="var(--text)" stroke="var(--surface)" stroke-width="3" paint-order="stroke">${value(last).toLocaleString()}</text>
+      <line class="growth-cross" y1="${m.t}" y2="${H - m.b}" stroke="var(--muted2)" stroke-width="1" visibility="hidden"/>
+      <circle class="growth-active" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>
+    </svg>
+    <div class="growth-tip" hidden></div>`;
+
+  const svg = chartEl.querySelector('svg');
+  svg.setAttribute('aria-label', `${name} ${growthMetric === 'vol' ? '볼륨' : '최고 무게'} 변화. 최근 ${fmt(value(last))}, 최고 ${fmt(value(best))}`);
+  const cross = svg.querySelector('.growth-cross');
+  const active = svg.querySelector('.growth-active');
+  const tip = chartEl.querySelector('.growth-tip');
+
+  // 가장 가까운 기록 하나를 짚어서 보여줘요 (누르거나 마우스를 올리면)
+  const show = e => {
+    const px = (e.clientX - svg.getBoundingClientRect().left) / svg.getBoundingClientRect().width * W;
+    const o = xy.reduce((a, b) => Math.abs(b.x - px) < Math.abs(a.x - px) ? b : a);
+    cross.setAttribute('x1', o.x); cross.setAttribute('x2', o.x); cross.setAttribute('visibility', 'visible');
+    active.setAttribute('cx', o.x); active.setAttribute('cy', o.y); active.setAttribute('visibility', 'visible');
+    tip.hidden = false;
+    tip.innerHTML = `<span>${o.p.date}</span><br>${fmt(value(o.p))}`;
+    tip.style.left = `${Math.max(0, Math.min(o.x - tip.offsetWidth / 2, W - tip.offsetWidth))}px`;
+  };
+  svg.addEventListener('pointerdown', show);
+  svg.addEventListener('pointermove', show);
+  svg.addEventListener('pointerleave', e => {
+    if (e.pointerType !== 'mouse') return;
+    tip.hidden = true;
+    cross.setAttribute('visibility', 'hidden');
+    active.setAttribute('visibility', 'hidden');
+  });
+}
+window.addEventListener('resize', renderGrowth);
+
 // ── 임시 저장 ──
 // 운동 중 입력한 내용을 이 기기에 계속 저장해서, 화면이 새로고침돼도 이어갈 수 있게 해요.
 // 노션 저장에 성공하면 지워요.
@@ -1746,6 +2006,7 @@ function saveDraft() {
 
 function clearDraft() {
   draftEnded = true;
+  growthHistory = null;
   try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
   document.getElementById('draftBanner').classList.remove('visible');
 }
@@ -1807,7 +2068,11 @@ function restoreDraft() {
 
 try { restoreDraft(); } catch(e) {}
 
-document.addEventListener('input', () => { draftEnded = false; saveDraft(); });
+document.addEventListener('input', e => {
+  if (e.target.closest('#growthBox')) return;   // 그래프에서 운동을 고르는 건 기록 입력이 아니에요
+  draftEnded = false;
+  saveDraft();
+});
 document.addEventListener('click', () => setTimeout(saveDraft, 0));
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') saveDraft();

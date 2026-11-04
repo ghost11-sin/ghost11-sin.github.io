@@ -739,7 +739,7 @@
     <button class="add-ex-btn" id="growthToggle" onclick="toggleGrowth()">📈 그래프 보기</button>
     <div class="growth-box" id="growthBox">
       <select class="growth-select" id="growthSelect" aria-label="운동 선택" onchange="renderGrowth()"></select>
-      <div class="growth-metric">
+      <div class="growth-metric" id="growthMetric">
         <button class="active" data-metric="vol" onclick="setGrowthMetric(this)">볼륨</button>
         <button data-metric="top" onclick="setGrowthMetric(this)">최고 무게</button>
       </div>
@@ -748,7 +748,7 @@
       <details class="growth-table">
         <summary>기록 표로 보기</summary>
         <table>
-          <thead><tr><th>날짜</th><th>최고 무게</th><th>볼륨</th></tr></thead>
+          <thead id="growthTableHead"><tr><th>날짜</th><th>최고 무게</th><th>볼륨</th></tr></thead>
           <tbody id="growthTableBody"></tbody>
         </table>
       </details>
@@ -1441,8 +1441,19 @@ function pastLines(page) {
   return exText.split('\n').filter(l => l.trim());
 }
 
+// 예전에 다르게 적은 이름을 하나로 (노션 기록은 그대로 두고 앱에서만 합쳐 읽어요)
+const NAME_ALIASES = {
+  '케이블(삼두)': '케이블 푸쉬다운',
+  '케이블 프레스 다운': '케이블 푸쉬다운',
+  '케이블 다운': '케이블 푸쉬다운',
+  '덤벨 인클라인 프레스': '인클라인 덤벨프레스',
+  '인클라인 벤치프레스': '인클라인 덤벨프레스',
+};
+
 function pastLineName(line) {
-  return line.split(' — ')[0].trim();
+  const name = line.split(' — ')[0].trim();
+  if (/^계단오르기\s*\d+층$/.test(name)) return '계단오르기';   // 예전 형식: "계단오르기 10층"
+  return NAME_ALIASES[name] || name;
 }
 
 function parsePastSets(line) {
@@ -1615,7 +1626,7 @@ function endWorkout() {
 
 // ── AUTOCOMPLETE ──
 const DEFAULT_EXERCISES = [
-  '벤치프레스', '인클라인 벤치프레스', '디클라인 벤치프레스',
+  '벤치프레스', '인클라인 덤벨프레스', '디클라인 벤치프레스',
   '덤벨 플라이', '케이블 크로스오버', '딥스',
   '숄더프레스', '덤벨 숄더프레스', '사이드 레터럴 레이즈', '프론트 레이즈',
   '트라이셉스 푸시다운', '오버헤드 트라이셉스 익스텐션', '스컬 크러셔',
@@ -1791,13 +1802,30 @@ async function fetchAllWorkouts() {
   return [...pages.values()];
 }
 
-// 볼륨 화면과 같은 기준: 예열 세트는 빼요. 같은 날 같은 운동은 합쳐요.
+// 그래프에서 뺀 한 번뿐인 기록 (그 날짜의 기록만 빼서, 나중에 다시 하면 새로 나와요)
+const GROWTH_HIDDEN = new Set([
+  '엉덩이|2026-05-21',
+  '안쪽 가슴|2026-05-22',
+  '플라이|2026-07-24',
+  '덤벨 로우|2026-08-03',
+]);
+
+// 볼륨 화면과 같은 기준: 예열 세트는 빼요. 같은 날 같은 운동은 합쳐요. 계단오르기는 층수로 봐요.
 function buildGrowthHistory(pages) {
   const byName = {};
   pages.forEach(page => {
     const date = page.properties['날짜']?.date?.start?.slice(0, 10);
     if (!date) return;
     pastLines(page).forEach(line => {
+      if (GROWTH_HIDDEN.has(`${pastLineName(line)}|${date}`)) return;
+      if (pastLineName(line) === '계단오르기') {
+        const floors = Number(line.match(/(\d+)층/)?.[1]);
+        if (!floors) return;
+        const days = byName['계단오르기'] ??= {};
+        const day = days[date] ??= { date, floors: 0 };
+        day.floors += floors;
+        return;
+      }
       const sets = parsePastSets(line).filter(s => s.type !== 'warmup');
       const vol = sets.reduce((sum, s) => sum + s.kg * s.reps, 0);
       if (!vol) return;
@@ -1879,12 +1907,19 @@ function renderGrowth() {
     return;
   }
 
-  bodyEl.innerHTML = [...points].reverse().map(p =>
-    `<tr><td>${p.date}</td><td>${p.top.toLocaleString()}kg</td><td>${p.vol.toLocaleString()}kg</td></tr>`
+  // 유산소는 층수 하나만 있어서 볼륨/최고 무게 버튼이 필요 없어요
+  const isFloors = points[0].floors !== undefined;
+  document.getElementById('growthMetric').style.display = isFloors ? 'none' : '';
+  document.getElementById('growthTableHead').innerHTML = isFloors
+    ? '<tr><th>날짜</th><th>층수</th></tr>'
+    : '<tr><th>날짜</th><th>최고 무게</th><th>볼륨</th></tr>';
+  bodyEl.innerHTML = [...points].reverse().map(p => isFloors
+    ? `<tr><td>${p.date}</td><td>${p.floors}층</td></tr>`
+    : `<tr><td>${p.date}</td><td>${p.top.toLocaleString()}kg</td><td>${p.vol.toLocaleString()}kg</td></tr>`
   ).join('');
 
-  const value = p => p[growthMetric];
-  const fmt = v => `${v.toLocaleString()}kg`;
+  const value = p => isFloors ? p.floors : p[growthMetric];
+  const fmt = v => isFloors ? `${v}층` : `${v.toLocaleString()}kg`;
   const last = points[points.length - 1];
   const best = points.reduce((a, b) => value(b) >= value(a) ? b : a);
   summaryEl.innerHTML = `최근 <b>${fmt(value(last))}</b> (${growthDateLabel(last.date)}) · 최고 <b>${fmt(value(best))}</b> (${growthDateLabel(best.date)})`;
@@ -1940,7 +1975,7 @@ function renderGrowth() {
     <div class="growth-tip" hidden></div>`;
 
   const svg = chartEl.querySelector('svg');
-  svg.setAttribute('aria-label', `${name} ${growthMetric === 'vol' ? '볼륨' : '최고 무게'} 변화. 최근 ${fmt(value(last))}, 최고 ${fmt(value(best))}`);
+  svg.setAttribute('aria-label', `${name} ${isFloors ? '층수' : growthMetric === 'vol' ? '볼륨' : '최고 무게'} 변화. 최근 ${fmt(value(last))}, 최고 ${fmt(value(best))}`);
   const cross = svg.querySelector('.growth-cross');
   const active = svg.querySelector('.growth-active');
   const tip = chartEl.querySelector('.growth-tip');
